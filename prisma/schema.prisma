@@ -1,0 +1,77 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  name         String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  goals        Goal[]
+  goalSessions GoalSession[]
+}
+
+model Goal {
+  id           String        @id @default(uuid())
+  userId       String
+  title        String
+  deadline     DateTime
+  progress     Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goalSessions GoalSession[]
+
+  @@index([userId])
+}
+
+model GoalSession {
+  id          String         @id @default(uuid())
+  userId      String
+  rawGoalText String
+  status      String         @default("in_progress") // in_progress, completed, abandoned
+  goalId      String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goal        Goal?          @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  questions   GoalQuestion[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([goalId])
+}
+
+model GoalQuestion {
+  id        String       @id @default(uuid())
+  sessionId String
+  question  String
+  options   String[] // Array of answer options
+  order     Int
+  createdAt DateTime     @default(now())
+  session   GoalSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  answers   GoalAnswer[]
+
+  @@index([sessionId])
+  @@index([sessionId, order])
+}
+
+model GoalAnswer {
+  id         String       @id @default(uuid())
+  questionId String
+  answer     String
+  createdAt  DateTime     @default(now())
+  question   GoalQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId]) // One answer per question
+  @@index([questionId])
+}
