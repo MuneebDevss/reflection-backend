@@ -11,6 +11,31 @@ export interface AIQuestionsResponse {
   questions: GeneratedQuestion[];
 }
 
+export interface GoalSummary {
+  title: string;
+  description: string | null;
+  deadline: Date;
+  progress: number;
+}
+
+export interface PreviousTask {
+  title: string;
+  description: string | null;
+  date: Date;
+  difficulty: number;
+  status: string;
+}
+
+export interface GeneratedTask {
+  title: string;
+  description: string | null;
+  difficulty: number;
+}
+
+export interface AITasksResponse {
+  tasks: GeneratedTask[];
+}
+
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
@@ -236,5 +261,172 @@ The title should be action-oriented and specific. The description should provide
     const description = `Goal to ${rawGoalText.toLowerCase()}. Based on your preferences and timeline.`;
 
     return { title, description, deadline };
+  }
+
+  /**
+   * Generate tasks using AI based on goal summary and previous task performance
+   */
+  async generateTasks(
+    goalSummary: GoalSummary,
+    previousTasks: PreviousTask[],
+    count: number,
+    difficulty: number
+  ): Promise<GeneratedTask[]> {
+    try {
+      if (!process.env.GEMINI_API_KEY || !this.model) {
+        this.logger.warn('Using fallback tasks - Gemini API key not configured');
+        return this.getFallbackTasks(count, difficulty);
+      }
+
+      // Prepare context about previous tasks
+      const recentTasksContext = previousTasks.slice(0, 10).map((task, idx) => 
+        `Day ${idx + 1}: "${task.title}" (Difficulty: ${task.difficulty}, Status: ${task.status})`
+      ).join('\n');
+
+      const daysUntilDeadline = Math.ceil(
+        (goalSummary.deadline.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      const prompt = `You are an AI assistant helping users achieve their goals through daily tasks.
+
+Goal Information:
+- Title: ${goalSummary.title}
+- Description: ${goalSummary.description || 'No description provided'}
+- Deadline: ${daysUntilDeadline} days from now
+- Current Progress: ${goalSummary.progress}%
+
+Recent Task History:
+${recentTasksContext || 'No previous tasks yet'}
+
+Task Generation Requirements:
+- Generate EXACTLY ${count} tasks for today
+- Each task should have difficulty level ${difficulty} (on a scale of 1-5)
+- Tasks should be:
+  * Specific and actionable
+  * Aligned with the goal
+  * Different from previous tasks (vary the activities)
+  * Appropriately challenging for the difficulty level
+  * Achievable in one day
+
+Difficulty Guidelines:
+- Level 1 (Easy): Small, simple actions (5-15 min)
+- Level 2 (Medium): Regular tasks (15-30 min)
+- Level 3 (Hard): Focused work (30-60 min)
+- Level 4 (Very Hard): Challenging tasks (1-2 hours)
+- Level 5 (Challenging): Major milestones (2+ hours)
+
+Return ONLY valid JSON in this exact format (no markdown, no explanation):
+{
+  "tasks": [
+    {
+      "title": "Practice Spanish verb conjugations for 20 minutes",
+      "description": "Focus on present tense regular verbs using flashcards or an app",
+      "difficulty": ${difficulty}
+    }
+  ]
+}
+
+Generate ${count} unique, actionable tasks for today:`;
+
+      this.logger.log(`Generating ${count} tasks with difficulty ${difficulty} for goal: ${goalSummary.title}`);
+
+      const result = await this.model.generateContent(prompt);
+      const response = result.response;
+      let responseText = response.text().trim();
+
+      if (!responseText) {
+        throw new Error('Empty response from Gemini');
+      }
+
+      this.logger.debug(`Gemini tasks response: ${responseText.substring(0, 200)}...`);
+
+      // Remove markdown code blocks if present
+      responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+
+      // Parse JSON response
+      const parsed = JSON.parse(responseText) as AITasksResponse;
+
+      if (!parsed.tasks || !Array.isArray(parsed.tasks)) {
+        throw new Error('Invalid response format from AI');
+      }
+
+      // Validate and sanitize tasks
+      const tasks = parsed.tasks
+        .filter(t => t.title && t.title.trim().length > 0)
+        .map(t => ({
+          title: t.title.trim(),
+          description: t.description?.trim() || null,
+          difficulty: difficulty, // Ensure consistent difficulty
+        }))
+        .slice(0, count); // Ensure we don't exceed requested count
+
+      if (tasks.length === 0) {
+        this.logger.warn('No valid tasks generated, using fallback');
+        return this.getFallbackTasks(count, difficulty);
+      }
+
+      // If we got fewer tasks than requested, fill with fallback tasks
+      if (tasks.length < count) {
+        this.logger.warn(`Generated only ${tasks.length} tasks, filling with ${count - tasks.length} fallback tasks`);
+        const fallbackTasks = this.getFallbackTasks(count - tasks.length, difficulty);
+        tasks.push(...fallbackTasks);
+      }
+
+      this.logger.log(`Successfully generated ${tasks.length} tasks`);
+      return tasks;
+
+    } catch (error) {
+      this.logger.error(`Failed to generate tasks: ${error.message}`, error.stack);
+      this.logger.warn('Using fallback tasks due to AI error');
+      return this.getFallbackTasks(count, difficulty);
+    }
+  }
+
+  /**
+   * Generate fallback tasks when AI is unavailable
+   */
+  private getFallbackTasks(count: number, difficulty: number): GeneratedTask[] {
+    const templates = {
+      1: [
+        { title: 'Take a small step towards your goal', description: 'Spend 5-10 minutes on a simple task' },
+        { title: 'Review your goal and plan', description: 'Reflect on your progress and next steps' },
+        { title: 'Do a quick practice session', description: 'Focus on one aspect for 10 minutes' },
+      ],
+      2: [
+        { title: 'Complete a focused work session', description: 'Dedicate 20-30 minutes to your goal' },
+        { title: 'Practice key skills', description: 'Work on fundamental techniques' },
+        { title: 'Review and apply learnings', description: 'Apply what you\'ve learned recently' },
+      ],
+      3: [
+        { title: 'Deep work session', description: 'Spend 45-60 minutes on focused work' },
+        { title: 'Tackle a challenging aspect', description: 'Work on something that pushes you' },
+        { title: 'Complete a significant milestone', description: 'Make substantial progress today' },
+      ],
+      4: [
+        { title: 'Extended practice session', description: 'Dedicate 1-2 hours to intensive work' },
+        { title: 'Challenge yourself significantly', description: 'Push beyond your comfort zone' },
+        { title: 'Work on advanced techniques', description: 'Focus on complex aspects of your goal' },
+      ],
+      5: [
+        { title: 'Major milestone work', description: 'Dedicate 2+ hours to a significant achievement' },
+        { title: 'Complete a major project component', description: 'Finish an important part of your goal' },
+        { title: 'Intensive focus session', description: 'Deep, uninterrupted work on your goal' },
+      ],
+    };
+
+    const difficultyKey = Math.max(1, Math.min(5, difficulty)) as keyof typeof templates;
+    const taskTemplates = templates[difficultyKey];
+
+    const tasks: GeneratedTask[] = [];
+    for (let i = 0; i < count; i++) {
+      const template = taskTemplates[i % taskTemplates.length];
+      tasks.push({
+        title: `${template.title} ${i > 2 ? `(${i + 1})` : ''}`.trim(),
+        description: template.description,
+        difficulty: difficulty,
+      });
+    }
+
+    return tasks;
   }
 }

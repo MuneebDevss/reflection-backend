@@ -1,11 +1,15 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AiService } from '../ai/ai.service';
 
 @Injectable()
 export class GoalTasksService {
   private readonly logger = new Logger(GoalTasksService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private aiService: AiService
+  ) {}
 
   /**
    * Get all tasks for today for a specific goal
@@ -83,11 +87,30 @@ export class GoalTasksService {
     // Calculate task generation parameters
     const taskParams = this.calculateTaskParameters(goal, previousTasks);
     
-    // Generate tasks
-    const tasks = await this.generateTasks(goalId, taskParams);
+    // Generate tasks using AI
+    const generatedTasks = await this.aiService.generateTasks(
+      {
+        title: goal.title,
+        description: goal.description,
+        deadline: goal.deadline,
+        progress: goal.progress,
+      },
+      previousTasks.map(t => ({
+        title: t.title,
+        description: t.description,
+        date: t.date,
+        difficulty: t.difficulty,
+        status: t.status,
+      })),
+      taskParams.count,
+      taskParams.difficulty
+    );
+
+    // Save generated tasks to database
+    const tasks = await this.saveTasks(goalId, generatedTasks, taskParams.difficulty);
 
     this.logger.log(
-      `Generated ${tasks.length} tasks for goal ${goalId} with difficulty ${taskParams.difficulty}`
+      `Generated ${tasks.length} AI-powered tasks for goal ${goalId} with difficulty ${taskParams.difficulty}`
     );
 
     return tasks;
@@ -179,30 +202,26 @@ export class GoalTasksService {
   }
 
   /**
-   * Generate task descriptions based on difficulty
+   * Save AI-generated tasks to database
    */
-  private async generateTasks(
+  private async saveTasks(
     goalId: string,
-    params: { count: number; difficulty: number }
+    generatedTasks: { title: string; description: string | null; difficulty: number }[],
+    difficulty: number
   ) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const taskTemplates = this.getTaskTemplates(params.difficulty);
     const tasks = [];
 
-    for (let i = 0; i < params.count; i++) {
-      const template =
-        taskTemplates[i % taskTemplates.length] ||
-        taskTemplates[taskTemplates.length - 1];
-
+    for (const taskData of generatedTasks) {
       const task = await this.prisma.dailyTask.create({
         data: {
           goalId,
-          title: template.title.replace('{n}', (i + 1).toString()),
-          description: template.description,
+          title: taskData.title,
+          description: taskData.description,
           date: today,
-          difficulty: params.difficulty,
+          difficulty: difficulty, // Use the calculated difficulty consistently
           status: 'PENDING',
         },
       });
@@ -211,70 +230,6 @@ export class GoalTasksService {
     }
 
     return tasks;
-  }
-
-  /**
-   * Get task templates based on difficulty level
-   */
-  private getTaskTemplates(difficulty: number) {
-    const templates = {
-      1: [
-        {
-          title: 'Small step {n}',
-          description: 'Take a small action towards your goal',
-        },
-        {
-          title: 'Quick task {n}',
-          description: 'Complete a quick task related to your goal',
-        },
-        {
-          title: 'Simple action {n}',
-          description: 'Do something simple that moves you forward',
-        },
-      ],
-      2: [
-        {
-          title: 'Regular task {n}',
-          description: 'Complete a standard task for your goal',
-        },
-        {
-          title: 'Goal activity {n}',
-          description: 'Work on an activity that supports your goal',
-        },
-      ],
-      3: [
-        {
-          title: 'Focused work {n}',
-          description: 'Spend focused time on your goal',
-        },
-        {
-          title: 'Important task {n}',
-          description: 'Work on an important aspect of your goal',
-        },
-      ],
-      4: [
-        {
-          title: 'Challenging task {n}',
-          description: 'Push yourself with a challenging task',
-        },
-        {
-          title: 'Advanced work {n}',
-          description: 'Work on advanced aspects of your goal',
-        },
-      ],
-      5: [
-        {
-          title: 'Major milestone {n}',
-          description: 'Work on a major milestone for your goal',
-        },
-        {
-          title: 'Intensive work {n}',
-          description: 'Dedicate intensive effort to your goal',
-        },
-      ],
-    };
-
-    return templates[difficulty] || templates[1];
   }
 
   /**
