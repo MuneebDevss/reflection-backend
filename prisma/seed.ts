@@ -18,35 +18,8 @@ async function main() {
 
   console.log('Created user:', user);
 
-  // Create some sample goals
-  const goals = await Promise.all([
-    prisma.goal.create({
-      data: {
-        userId: user.id,
-        title: 'Learn to meditate daily',
-        deadline: new Date('2024-12-31'),
-        progress: 45,
-      },
-    }),
-    prisma.goal.create({
-      data: {
-        userId: user.id,
-        title: 'Read 24 books this year',
-        deadline: new Date('2024-12-31'),
-        progress: 25,
-      },
-    }),
-    prisma.goal.create({
-      data: {
-        userId: user.id,
-        title: 'Run a half marathon',
-        deadline: new Date('2024-09-15'),
-        progress: 60,
-      },
-    }),
-  ]);
-
-  console.log('Created goals:', goals.length);
+  
+  
 }
 
 main()

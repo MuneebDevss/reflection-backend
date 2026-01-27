@@ -176,7 +176,7 @@ export class GoalSessionsService {
 
       // Generate goal summary using AI
       this.logger.log(`Generating goal summary for session ${sessionId}`);
-      const { title, deadline } = await this.aiService.generateGoalSummary(
+      const { title, description, deadline } = await this.aiService.generateGoalSummary(
         session.rawGoalText,
         answers
       );
@@ -186,6 +186,7 @@ export class GoalSessionsService {
         data: {
           userId: session.userId,
           title,
+          description,
           deadline,
           progress: 0,
         },

@@ -137,7 +137,7 @@ Now generate clarification questions for this goal: "${rawGoalText}"`;
     ];
   }
 
-  async generateGoalSummary(rawGoalText: string, answers: { question: string; answer: string }[]): Promise<{ title: string; deadline: Date }> {
+  async generateGoalSummary(rawGoalText: string, answers: { question: string; answer: string }[]): Promise<{ title: string; description: string; deadline: Date }> {
     try {
       if (!process.env.GEMINI_API_KEY || !this.model) {
         this.logger.warn('Using fallback goal summary - Gemini API key not configured');
@@ -149,7 +149,8 @@ Now generate clarification questions for this goal: "${rawGoalText}"`;
 
 Based on the user's initial goal and their answers to clarification questions, generate:
 1. A clear, concise goal title (5-10 words)
-2. A realistic deadline date
+2. A detailed description of the goal (2-3 sentences explaining what the user wants to achieve)
+3. A realistic deadline date
 
 Initial goal: "${rawGoalText}"
 
@@ -159,10 +160,11 @@ ${answersText}
 Return ONLY valid JSON in this exact format (no markdown, no explanation):
 {
   "title": "Learn conversational Spanish",
+  "description": "Achieve basic conversational fluency in Spanish to communicate confidently in everyday situations and travel contexts.",
   "deadlineInDays": 90
 }
 
-The title should be action-oriented and specific. The deadlineInDays should be a number representing days from today.`;
+The title should be action-oriented and specific. The description should provide context about the goal. The deadlineInDays should be a number representing days from today.`;
 
       this.logger.log(`Generating goal summary from ${answers.length} answers`);
 
@@ -180,7 +182,7 @@ The title should be action-oriented and specific. The deadlineInDays should be a
       responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
 
       // Parse JSON response
-      const parsed = JSON.parse(responseText) as { title: string; deadlineInDays: number };
+      const parsed = JSON.parse(responseText) as { title: string; description: string; deadlineInDays: number };
 
       if (!parsed.title || typeof parsed.deadlineInDays !== 'number') {
         throw new Error('Invalid response format from AI');
@@ -194,6 +196,7 @@ The title should be action-oriented and specific. The deadlineInDays should be a
 
       return {
         title: parsed.title.trim(),
+        description: parsed.description?.trim() || '',
         deadline,
       };
 
@@ -204,7 +207,7 @@ The title should be action-oriented and specific. The deadlineInDays should be a
     }
   }
 
-  private getFallbackGoalSummary(rawGoalText: string, answers: { question: string; answer: string }[]): { title: string; deadline: Date } {
+  private getFallbackGoalSummary(rawGoalText: string, answers: { question: string; answer: string }[]): { title: string; description: string; deadline: Date } {
     // Extract deadline from answers if available
     const deadlineAnswer = answers.find(a => 
       a.question.toLowerCase().includes('when') || 
@@ -229,6 +232,9 @@ The title should be action-oriented and specific. The deadlineInDays should be a
       ? rawGoalText.substring(0, 47) + '...'
       : rawGoalText;
 
-    return { title, deadline };
+    // Create a description from the raw goal text and answers
+    const description = `Goal to ${rawGoalText.toLowerCase()}. Based on your preferences and timeline.`;
+
+    return { title, description, deadline };
   }
 }
