@@ -7,10 +7,13 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { DateTimeService } from '../common/date-time/date-time.service';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
+
+  constructor(private dateTimeService: DateTimeService) {}
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
@@ -47,7 +50,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     // Send response
     response.status(status).json({
       statusCode: status,
-      timestamp: new Date().toISOString(),
+      timestamp: this.dateTimeService.toISOString(),
       path: request.url,
       method: request.method,
       message,

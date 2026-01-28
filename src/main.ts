@@ -3,6 +3,7 @@ import { ValidationPipe, Logger, BadRequestException } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './filters/all-exceptions.filter';
 import { LoggingInterceptor } from './interceptors/logging.interceptor';
+import { DateTimeService } from './common/date-time/date-time.service';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -10,11 +11,14 @@ async function bootstrap() {
   try {
     const app = await NestFactory.create(AppModule);
     
+    // Get DateTimeService from dependency injection container
+    const dateTimeService = app.get(DateTimeService);
+    
     // Enable global exception filter
-    app.useGlobalFilters(new AllExceptionsFilter());
+    app.useGlobalFilters(new AllExceptionsFilter(dateTimeService));
     
     // Enable global logging interceptor
-    app.useGlobalInterceptors(new LoggingInterceptor());
+    app.useGlobalInterceptors(new LoggingInterceptor(dateTimeService));
     
     // Enable CORS for frontend
     app.enableCors({

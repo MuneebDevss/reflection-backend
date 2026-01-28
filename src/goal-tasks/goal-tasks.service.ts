@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AiService } from '../ai/ai.service';
+import { DateTimeService } from '../common/date-time/date-time.service';
 
 @Injectable()
 export class GoalTasksService {
@@ -8,44 +9,37 @@ export class GoalTasksService {
 
   constructor(
     private prisma: PrismaService,
-    private aiService: AiService
+    private aiService: AiService,
+    private dateTimeService: DateTimeService
   ) {}
 
   /**
    * Get all tasks for today for a specific goal
    */
-  async getTodayTasks(goalId: string) {
-    // Verify goal exists
-    const goal = await this.prisma.goal.findUnique({
-      where: { id: goalId },
-    });
-
-    if (!goal) {
-      throw new NotFoundException(`Goal with ID ${goalId} not found`);
-    }
-
-    // Get start and end of today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const tasks = await this.prisma.dailyTask.findMany({
-      where: {
-        goalId,
-        date: {
-          gte: today,
-          lt: tomorrow,
+  async getTodayTasks(goalId: string, userTimezone: string = 'UTC') {
+  // 1. Optional: Use a single query with 'include' or just fetch tasks.
+  // If you want to check if the goal exists and get tasks in one go:
+  const goalWithTasks = await this.prisma.goal.findUnique({
+    where: { id: goalId },
+    include: {
+      dailyTasks: {
+        where: {
+          date: {
+            gte: this.dateTimeService.getStartOfTodayUTC(),
+            lt: this.dateTimeService.getEndOfTodayUTC(),
+          },
         },
+        orderBy: { createdAt: 'asc' },
       },
-      orderBy: {
-        createdAt: 'asc',
-      },
-    });
+    },
+  });
 
-    this.logger.log(`Found ${tasks.length} tasks for goal ${goalId} for today`);
-    return tasks;
+  if (!goalWithTasks) {
+    throw new NotFoundException(`Goal with ID ${goalId} not found`);
   }
+
+  return goalWithTasks.dailyTasks;
+}
 
   async getPreviousTasks(goalId: string, period: 'LastWeek' | 'LastDay' | 'LastMonth' | 'AllTime' ) {
     // Verify goal exists
@@ -56,19 +50,19 @@ export class GoalTasksService {
       throw new NotFoundException(`Goal with ID ${goalId} not found`);
     }
     // setting the date in the utc format based on the period
-    let date = new Date();
+    let date: Date;
     switch (period) {
       case 'LastDay':
-        date.setDate(date.getDate() - 1);
+        date = this.dateTimeService.subtractDays(1);
         break;
       case 'LastWeek':
-        date.setDate(date.getDate() - 7);
+        date = this.dateTimeService.subtractDays(7);
         break;
       case 'LastMonth':
-        date.setMonth(date.getMonth() - 1);
+        date = this.dateTimeService.subtractMonths(1);
         break;
       case 'AllTime':
-        date = new Date(0); // Earliest possible date
+        date = this.dateTimeService.getEpochDate();
         break;
     }
     const tasks = await this.prisma.dailyTask.findMany({
@@ -107,8 +101,7 @@ export class GoalTasksService {
     }
 
     // Get start and end of today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = this.dateTimeService.getStartOfDayLocal();
 
     // Get all previous tasks for this goal
     const previousTasks = await this.prisma.dailyTask.findMany({
@@ -163,12 +156,9 @@ export class GoalTasksService {
     previousTasks: any[]
   ): { count: number; difficulty: number } {
     const deadline = new Date(goal.deadline);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = this.dateTimeService.getStartOfDayLocal();
     
-    const daysUntilDeadline = Math.ceil(
-      (deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-    );
+    const daysUntilDeadline = this.dateTimeService.getDaysDifference(today, deadline);
 
     // If no previous tasks, start with baseline
     if (previousTasks.length === 0) {
@@ -178,7 +168,7 @@ export class GoalTasksService {
     // Group tasks by date to find most recent day's tasks
     const tasksByDate = new Map<string, any[]>();
     previousTasks.forEach((task) => {
-      const dateKey = task.date.toISOString().split('T')[0];
+      const dateKey = this.dateTimeService.toDateOnlyString(task.date);
       if (!tasksByDate.has(dateKey)) {
         tasksByDate.set(dateKey, []);
       }
@@ -248,8 +238,7 @@ export class GoalTasksService {
     generatedTasks: { title: string; description: string | null; difficulty: number }[],
     difficulty: number
   ) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = this.dateTimeService.getStartOfDayLocal();
 
     const tasks = [];
 

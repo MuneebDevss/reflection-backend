@@ -3,18 +3,22 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateGoalDto } from './dto/create-goal.dto';
 import { UpdateGoalDto } from './dto/update-goal.dto';
 import { Prisma } from '@prisma/client';
+import { DateTimeService } from '../common/date-time/date-time.service';
 
 @Injectable()
 export class GoalsService {
   private readonly logger = new Logger(GoalsService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private dateTimeService: DateTimeService
+  ) {}
 
   async create(createGoalDto: CreateGoalDto) {
     try {
       // Validate date
-      const deadline = new Date(createGoalDto.deadline);
-      if (isNaN(deadline.getTime())) {
+      const deadline = this.dateTimeService.parseDate(createGoalDto.deadline);
+      if (!this.dateTimeService.isValidDate(deadline)) {
         throw new BadRequestException('Invalid deadline date format');
       }
 

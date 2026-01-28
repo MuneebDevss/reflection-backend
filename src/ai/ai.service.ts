@@ -1,5 +1,6 @@
 import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { DateTimeService } from '../common/date-time/date-time.service';
 
 export interface GeneratedQuestion {
   question: string;
@@ -42,7 +43,7 @@ export class AiService {
   private genAI: GoogleGenerativeAI | null = null;
   private model: any = null;
 
-  constructor() {
+  constructor(private dateTimeService: DateTimeService) {
     const apiKey = process.env.GEMINI_API_KEY;
     
     if (!apiKey) {
@@ -214,8 +215,11 @@ The title should be action-oriented and specific. The description should provide
       }
 
       // Calculate deadline date
-      const deadline = new Date();
-      deadline.setDate(deadline.getDate() + Math.max(1, Math.min(365, parsed.deadlineInDays)));
+      const normalizedToday = this.dateTimeService.normalizeToUTCMidnight();
+      const deadline = this.dateTimeService.addDays(
+        Math.max(1, Math.min(365, parsed.deadlineInDays)),
+        normalizedToday
+      );
 
       this.logger.log(`Generated goal summary: "${parsed.title}" with deadline in ${parsed.deadlineInDays} days`);
 
@@ -249,8 +253,7 @@ The title should be action-oriented and specific. The description should provide
       else if (answer.includes('1 year')) deadlineInDays = 365;
     }
 
-    const deadline = new Date();
-    deadline.setDate(deadline.getDate() + deadlineInDays);
+    const deadline = this.dateTimeService.addDays(deadlineInDays);
 
     // Create a simple title from raw goal text (truncate if too long)
     const title = rawGoalText.length > 50 
@@ -283,8 +286,9 @@ The title should be action-oriented and specific. The description should provide
         `Day ${idx + 1}: "${task.title}" (Difficulty: ${task.difficulty}, Status: ${task.status})`
       ).join('\n');
 
-      const daysUntilDeadline = Math.ceil(
-        (goalSummary.deadline.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+      const daysUntilDeadline = this.dateTimeService.getDaysDifference(
+        this.dateTimeService.getCurrentDate(),
+        goalSummary.deadline
       );
 
       const prompt = `You are an AI assistant helping users achieve their goals through daily tasks.
