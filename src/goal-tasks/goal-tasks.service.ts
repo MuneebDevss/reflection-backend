@@ -47,6 +47,45 @@ export class GoalTasksService {
     return tasks;
   }
 
+  async getPreviousTasks(goalId: string, period: 'LastWeek' | 'LastDay' | 'LastMonth' | 'AllTime' ) {
+    // Verify goal exists
+    const goal = await this.prisma.goal.findUnique({
+      where: { id: goalId },
+    });
+    if (!goal) {
+      throw new NotFoundException(`Goal with ID ${goalId} not found`);
+    }
+    // setting the date in the utc format based on the period
+    let date = new Date();
+    switch (period) {
+      case 'LastDay':
+        date.setDate(date.getDate() - 1);
+        break;
+      case 'LastWeek':
+        date.setDate(date.getDate() - 7);
+        break;
+      case 'LastMonth':
+        date.setMonth(date.getMonth() - 1);
+        break;
+      case 'AllTime':
+        date = new Date(0); // Earliest possible date
+        break;
+    }
+    const tasks = await this.prisma.dailyTask.findMany({
+      where: {
+        goalId,
+        date: {
+          gte: date,
+        },
+      },
+      orderBy: {
+        date: 'desc',
+      },
+    });
+
+    return tasks;
+  }
+
   /**
    * Generate tasks for today based on past performance
    */

@@ -6,6 +6,7 @@ import { AiModule } from './ai/ai.module';
 import { GoalSessionsModule } from './goal-sessions/goal-sessions.module';
 import { GoalQuestionsModule } from './goal-questions/goal-questions.module';
 import { GoalTasksModule } from './goal-tasks/goal-tasks.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { GoalTasksModule } from './goal-tasks/goal-tasks.module';
     GoalSessionsModule,
     GoalQuestionsModule,
     GoalTasksModule,
+    HealthModule,
   ],
 })
 export class AppModule {}
