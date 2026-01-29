@@ -101,7 +101,7 @@ export class GoalTasksService {
     }
 
     // Get start and end of today
-    const today = this.dateTimeService.getStartOfDayLocal();
+    const today = this.dateTimeService.getStartOfTodayUTC();
 
     // Get all previous tasks for this goal
     const previousTasks = await this.prisma.dailyTask.findMany({
@@ -156,7 +156,7 @@ export class GoalTasksService {
     previousTasks: any[]
   ): { count: number; difficulty: number } {
     const deadline = new Date(goal.deadline);
-    const today = this.dateTimeService.getStartOfDayLocal();
+    const today = this.dateTimeService.getStartOfTodayUTC();
     
     const daysUntilDeadline = this.dateTimeService.getDaysDifference(today, deadline);
 
@@ -238,7 +238,7 @@ export class GoalTasksService {
     generatedTasks: { title: string; description: string | null; difficulty: number }[],
     difficulty: number
   ) {
-    const today = this.dateTimeService.getStartOfDayLocal();
+    const today = this.dateTimeService.getStartOfTodayUTC();
 
     const tasks = [];
 

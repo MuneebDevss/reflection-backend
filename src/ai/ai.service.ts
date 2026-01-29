@@ -37,6 +37,22 @@ export interface AITasksResponse {
   tasks: GeneratedTask[];
 }
 
+export type AdaptiveStrategy = 
+  | 'PROGRESSIVE' 
+  | 'BALANCED' 
+  | 'RECOVERY' 
+  | 'RESET' 
+  | 'INTERVENTION';
+
+export interface AdaptivePlan {
+  finalTaskCount: number;
+  finalDifficulty: number;
+  carryOverRatio: number; // 0 to 1, percentage of tasks that should be adapted from missed tasks
+  strategyName: AdaptiveStrategy;
+  completionRatio: number;
+  consecutiveMissedDays: number;
+}
+
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
@@ -175,7 +191,7 @@ Now generate clarification questions for this goal: "${rawGoalText}"`;
 
 Based on the user's initial goal and their answers to clarification questions, generate:
 1. A clear, concise goal title (5-10 words)
-2. A detailed description of the goal (2-3 sentences explaining what the user wants to achieve)
+2. A comprehensive description of the goal. This must synthesize the initial goal with all the details, constraints, and preferences provided in the user's answers. It should serve as a detailed project brief that contains enough context to generate specific sub-tasks later.
 3. A realistic deadline date
 
 Initial goal: "${rawGoalText}"
@@ -267,6 +283,172 @@ The title should be action-oriented and specific. The description should provide
   }
 
   /**
+   * Calculate adaptive task generation plan based on previous task performance.
+   * 
+   * This function analyzes recent task history to determine:
+   * - How many tasks to generate
+   * - What difficulty level to use
+   * - What ratio of tasks should be adapted from missed tasks vs new tasks
+   * - Which strategy to apply
+   * 
+   * Strategy selection logic:
+   * - PROGRESSIVE: 80%+ completion → increase difficulty and count, all new tasks
+   * - BALANCED: 50-80% completion → maintain current level, mostly new tasks
+   * - RECOVERY: 20-50% completion → decrease difficulty, half adapted tasks
+   * - RESET: <20% completion → decrease difficulty and count, mostly adapted tasks
+   * - INTERVENTION: 3+ consecutive missed days → minimal tasks, habit-building focus
+   * 
+   * @param previousTasks - Array of recent previous tasks (max 7-10 recommended)
+   * @param daysUntilDeadline - Number of days remaining until goal deadline
+   * @returns AdaptivePlan with calculated parameters
+   */
+  private calculateAdaptivePlan(
+    previousTasks: PreviousTask[],
+    daysUntilDeadline: number,
+  ): AdaptivePlan {
+    // Default starting values
+    const DEFAULT_TASK_COUNT = 3;
+    const DEFAULT_DIFFICULTY = 2;
+    const MIN_TASK_COUNT = 1;
+    const MAX_TASK_COUNT = 6;
+    const MIN_DIFFICULTY = 1;
+    const MAX_DIFFICULTY = 5;
+
+    // If no previous tasks, use defaults with BALANCED strategy
+    if (!previousTasks || previousTasks.length === 0) {
+      return {
+        finalTaskCount: DEFAULT_TASK_COUNT,
+        finalDifficulty: DEFAULT_DIFFICULTY,
+        carryOverRatio: 0,
+        strategyName: 'BALANCED',
+        completionRatio: 0,
+        consecutiveMissedDays: 0,
+      };
+    }
+    
+    // Filter tasks from the last 3 days for recent performance analysis
+    const THREE_DAYS_AGO = this.dateTimeService.addDays(
+    -3,this.dateTimeService.getCurrentDate()
+    );
+
+    const recentTasks = previousTasks.filter(
+    t => t.date >= THREE_DAYS_AGO
+    );
+
+    
+    // Calculate completion ratio
+    const completedCount = recentTasks.filter(t => t.status === 'COMPLETED').length;
+    const totalTasks = recentTasks.length;
+    const completionRatio = totalTasks > 0 ? completedCount / totalTasks : 0;
+
+    // Detect consecutive missed days
+    // Group tasks by date and check if entire days were missed
+    const tasksByDate = new Map<string, PreviousTask[]>();
+    recentTasks.forEach(task => {
+      const dateKey = task.date.toISOString().split('T')[0];
+      if (!tasksByDate.has(dateKey)) {
+        tasksByDate.set(dateKey, []);
+      }
+      tasksByDate.get(dateKey)!.push(task);
+    });
+    
+
+    let consecutiveMissedDays = 0;
+    const sortedDays = Array.from(tasksByDate.entries())
+  .sort(([a], [b]) => b.localeCompare(a));
+
+    for (const [, dayTasks] of sortedDays) {
+      const allMissed = dayTasks.every(t => t.status !== 'COMPLETED');
+      if (allMissed) {
+        consecutiveMissedDays++;
+      } else {
+        break; // Stop counting when we hit a day with completions
+      }
+    }
+
+    // Calculate average difficulty and task count from recent history
+    const avgDifficulty = recentTasks.reduce((sum, t) => sum + t.difficulty, 0) / recentTasks.length;
+    const avgTaskCount = tasksByDate.size > 0 
+      ? Array.from(tasksByDate.values()).reduce((sum, tasks) => sum + tasks.length, 0) / tasksByDate.size
+      : DEFAULT_TASK_COUNT;
+
+    let finalTaskCount: number;
+    let finalDifficulty: number;
+    let carryOverRatio: number;
+    let strategyName: AdaptiveStrategy;
+
+    // INTERVENTION MODE: 3+ consecutive missed days
+    if (consecutiveMissedDays >= 3) {
+      strategyName = 'INTERVENTION';
+      finalDifficulty = Math.max(MIN_DIFFICULTY, Math.floor(avgDifficulty) - 1);
+      finalTaskCount = Math.max(MIN_TASK_COUNT, Math.floor(avgTaskCount) - 1);
+      carryOverRatio = 0.8; // 80% adapted tasks - focus on very small habit-building tasks
+      
+      this.logger.log(`INTERVENTION mode triggered: ${consecutiveMissedDays} consecutive missed days`);
+    }
+    // PROGRESSIVE: 80%+ completion
+    else if (completionRatio >= 0.8) {
+      const urgencyMultiplier =
+      daysUntilDeadline <= 7 ? 1.2 :
+      daysUntilDeadline <= 30 ? 1.1 :
+      1;
+
+      strategyName = 'PROGRESSIVE';
+      finalDifficulty = Math.min(MAX_DIFFICULTY, Math.ceil(avgDifficulty) + 1);
+      finalTaskCount = Math.min(MAX_TASK_COUNT, Math.ceil(avgTaskCount * urgencyMultiplier) + 1);
+      carryOverRatio = 0; // All new tasks
+      
+      this.logger.log(`PROGRESSIVE mode: ${(completionRatio * 100).toFixed(0)}% completion`);
+    }
+    // BALANCED: 50-80% completion
+    else if (completionRatio >= 0.5) {
+      strategyName = 'BALANCED';
+      finalDifficulty = Math.round(avgDifficulty);
+      finalTaskCount = Math.round(avgTaskCount);
+      carryOverRatio = 0.2; // 20% adapted tasks
+      
+      this.logger.log(`BALANCED mode: ${(completionRatio * 100).toFixed(0)}% completion`);
+    }
+    // RECOVERY: 20-50% completion
+    else if (completionRatio >= 0.2) {
+      strategyName = 'RECOVERY';
+      finalDifficulty = Math.max(MIN_DIFFICULTY, Math.floor(avgDifficulty) - 1);
+      finalTaskCount = Math.max(MIN_TASK_COUNT, Math.floor(avgTaskCount));
+      carryOverRatio = 0.5; // 50% adapted tasks
+      
+      this.logger.log(`RECOVERY mode: ${(completionRatio * 100).toFixed(0)}% completion`);
+    }
+    // RESET: <20% completion
+    else {
+      strategyName = 'RESET';
+      finalDifficulty = Math.max(MIN_DIFFICULTY, Math.floor(avgDifficulty) - 1);
+      finalTaskCount = Math.max(MIN_TASK_COUNT, Math.floor(avgTaskCount) - 1);
+      carryOverRatio = 0.7; // 70% adapted tasks
+      
+      this.logger.log(`RESET mode: ${(completionRatio * 100).toFixed(0)}% completion`);
+    }
+
+    // Ensure values are within bounds
+    finalTaskCount = Math.max(MIN_TASK_COUNT, Math.min(MAX_TASK_COUNT, finalTaskCount));
+    finalDifficulty = Math.max(MIN_DIFFICULTY, Math.min(MAX_DIFFICULTY, finalDifficulty));
+    carryOverRatio = Math.max(0, Math.min(1, carryOverRatio));
+
+    this.logger.log(
+      `Adaptive plan: ${strategyName} - ${finalTaskCount} tasks at difficulty ${finalDifficulty} ` +
+      `(${(carryOverRatio * 100).toFixed(0)}% adapted from missed tasks)`
+    );
+
+    return {
+      finalTaskCount,
+      finalDifficulty,
+      carryOverRatio,
+      strategyName,
+      completionRatio,
+      consecutiveMissedDays,
+    };
+  }
+
+  /**
    * Generate tasks using AI based on goal summary and previous task performance
    */
   async generateTasks(
@@ -281,15 +463,55 @@ The title should be action-oriented and specific. The description should provide
         return this.getFallbackTasks(count, difficulty);
       }
 
-      // Prepare context about previous tasks
-      const recentTasksContext = previousTasks.slice(0, 10).map((task, idx) => 
-        `Day ${idx + 1}: "${task.title}" (Difficulty: ${task.difficulty}, Status: ${task.status})`
-      ).join('\n');
-
       const daysUntilDeadline = this.dateTimeService.getDaysDifference(
         this.dateTimeService.getCurrentDate(),
         goalSummary.deadline
       );
+
+      // Calculate adaptive plan based on previous task performance
+      const adaptivePlan = this.calculateAdaptivePlan(previousTasks, daysUntilDeadline);
+      
+      // Use adaptive values instead of passed parameters
+      const finalCount = adaptivePlan.finalTaskCount;
+      const finalDifficulty = adaptivePlan.finalDifficulty;
+      
+      // Prepare context about previous tasks for AI prompt
+      const recentTasksContext = previousTasks.slice(0, 10).map((task, idx) => 
+        `Day ${idx + 1}: "${task.title}" (Difficulty: ${task.difficulty}, Status: ${task.status})`
+      ).join('\n');
+      
+      // Get missed tasks for potential adaptation
+      const missedTasks = previousTasks.filter(t => 
+        t.status === 'PENDING' || t.status === 'SKIPPED'
+      ).slice(0, 5); // Get up to 5 recent missed tasks
+      
+      const missedTasksContext = missedTasks.length > 0
+        ? missedTasks.map(t => `"${t.title}" (Difficulty: ${t.difficulty})`).join('\n')
+        : 'None';
+      
+      // Calculate how many tasks should be adapted vs new
+      const adaptedTaskCount = Math.round(finalCount * adaptivePlan.carryOverRatio);
+      const newTaskCount = finalCount - adaptedTaskCount;
+      
+      // Build strategy explanation for AI
+      let strategyExplanation = '';
+      switch (adaptivePlan.strategyName) {
+        case 'PROGRESSIVE':
+          strategyExplanation = 'The user is performing excellently (80%+ completion rate). Generate ALL NEW challenging tasks to progressively increase difficulty and maintain momentum.';
+          break;
+        case 'BALANCED':
+          strategyExplanation = 'The user is making good progress (50-80% completion rate). Generate mostly new tasks with a small portion inspired by missed tasks (but simplified).';
+          break;
+        case 'RECOVERY':
+          strategyExplanation = 'The user is struggling (20-50% completion rate). Generate half new tasks and half ADAPTED tasks from missed work. Adapted tasks must be EASIER, SMALLER in scope, and SHORTER in duration than the original.';
+          break;
+        case 'RESET':
+          strategyExplanation = 'The user needs support (<20% completion rate). Generate mostly ADAPTED tasks from missed work (70%), making them significantly easier and more achievable. Focus on rebuilding confidence.';
+          break;
+        case 'INTERVENTION':
+          strategyExplanation = `The user has missed ${adaptivePlan.consecutiveMissedDays} consecutive days. Generate VERY SMALL habit-building tasks (80% adapted from missed work). Tasks should take 5-10 minutes maximum and focus on getting back into the routine.`;
+          break;
+      }
 
       const prompt = `You are an AI assistant helping users achieve their goals through daily tasks.
 
@@ -302,15 +524,27 @@ Goal Information:
 Recent Task History:
 ${recentTasksContext || 'No previous tasks yet'}
 
+Previously Missed/Skipped Tasks:
+${missedTasksContext}
+
+📊 ADAPTIVE STRATEGY: ${adaptivePlan.strategyName}
+Completion Rate: ${(adaptivePlan.completionRatio * 100).toFixed(0)}%
+${strategyExplanation}
+
 Task Generation Requirements:
-- Generate EXACTLY ${count} tasks for today
-- Each task should have difficulty level ${difficulty} (on a scale of 1-5)
-- Tasks should be:
-  * Specific and actionable
-  * Aligned with the goal
-  * Different from previous tasks (vary the activities)
-  * Appropriately challenging for the difficulty level
-  * Achievable in one day
+- Generate EXACTLY ${finalCount} tasks for today
+- Target difficulty level: ${finalDifficulty} (on a scale of 1-5)
+- Task composition:
+  * ${newTaskCount} NEW tasks (fresh activities)
+  * ${adaptedTaskCount} ADAPTED tasks (from missed work, but simplified)
+
+⚠️ CRITICAL: When adapting missed tasks:
+- NEVER repeat the exact same task title
+- Make adapted tasks EASIER than the original
+- Reduce scope (e.g., "Complete chapter 3" → "Read 5 pages from chapter 3")
+- Shorten duration (e.g., "60 minute session" → "15 minute session")
+- Lower complexity (e.g., "Write full essay" → "Outline main points")
+- Adapted tasks can be difficulty ${Math.max(1, finalDifficulty - 1)} even if target is ${finalDifficulty}
 
 Difficulty Guidelines:
 - Level 1 (Easy): Small, simple actions (5-15 min)
@@ -323,16 +557,16 @@ Return ONLY valid JSON in this exact format (no markdown, no explanation):
 {
   "tasks": [
     {
-      "title": "Practice Spanish verb conjugations for 20 minutes",
-      "description": "Focus on present tense regular verbs using flashcards or an app",
-      "difficulty": ${difficulty}
+      "title": "Practice basic Spanish greetings for 10 minutes",
+      "description": "Adapted from previous missed task - simplified to just greetings",
+      "difficulty": ${finalDifficulty}
     }
   ]
 }
 
-Generate ${count} unique, actionable tasks for today:`;
+Generate ${finalCount} unique, actionable tasks for today:`;
 
-      this.logger.log(`Generating ${count} tasks with difficulty ${difficulty} for goal: ${goalSummary.title}`);
+      this.logger.log(`Generating ${finalCount} tasks at difficulty ${finalDifficulty} using ${adaptivePlan.strategyName}`);
 
       const result = await this.model.generateContent(prompt);
       const response = result.response;
@@ -360,23 +594,24 @@ Generate ${count} unique, actionable tasks for today:`;
         .map(t => ({
           title: t.title.trim(),
           description: t.description?.trim() || null,
-          difficulty: difficulty, // Ensure consistent difficulty
+          // Allow AI to set difficulty, but clamp to reasonable range around target
+          difficulty: Math.max(1, Math.min(5, t.difficulty || finalDifficulty)),
         }))
-        .slice(0, count); // Ensure we don't exceed requested count
+        .slice(0, finalCount); // Ensure we don't exceed requested count
 
       if (tasks.length === 0) {
         this.logger.warn('No valid tasks generated, using fallback');
-        return this.getFallbackTasks(count, difficulty);
+        return this.getFallbackTasks(finalCount, finalDifficulty);
       }
 
       // If we got fewer tasks than requested, fill with fallback tasks
-      if (tasks.length < count) {
-        this.logger.warn(`Generated only ${tasks.length} tasks, filling with ${count - tasks.length} fallback tasks`);
-        const fallbackTasks = this.getFallbackTasks(count - tasks.length, difficulty);
+      if (tasks.length < finalCount) {
+        this.logger.warn(`Generated only ${tasks.length} tasks, filling with ${finalCount - tasks.length} fallback tasks`);
+        const fallbackTasks = this.getFallbackTasks(finalCount - tasks.length, finalDifficulty);
         tasks.push(...fallbackTasks);
       }
 
-      this.logger.log(`Successfully generated ${tasks.length} tasks`);
+      this.logger.log(`Successfully generated ${tasks.length} tasks using ${adaptivePlan.strategyName} strategy`);
       return tasks;
 
     } catch (error) {
