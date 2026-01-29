@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { AiService } from '../ai/ai.service';
+import { AiGoalService } from '../ai/ai-goal.service';
+import { AiTaskService } from '../ai/ai-task.service';
 import { DateTimeService } from '../common/date-time/date-time.service';
 
 @Injectable()
@@ -9,8 +10,9 @@ export class GoalTasksService {
 
   constructor(
     private prisma: PrismaService,
-    private aiService: AiService,
-    private dateTimeService: DateTimeService
+    private aiService: AiGoalService,
+    private dateTimeService: DateTimeService,
+    private aiTaskService: AiTaskService
   ) {}
 
   /**
@@ -120,7 +122,7 @@ export class GoalTasksService {
     const taskParams = this.calculateTaskParameters(goal, previousTasks);
     
     // Generate tasks using AI
-    const generatedTasks = await this.aiService.generateTasks(
+    const generatedTasks = await this.aiTaskService.generateTasks(
       {
         title: goal.title,
         description: goal.description,

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, InternalServerErrorException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { AiService } from '../ai/ai.service';
+import { AiGoalService } from '../ai/ai-goal.service';
 import { CreateGoalSessionDto } from './dto/create-goal-session.dto';
 
 @Injectable()
@@ -9,7 +9,7 @@ export class GoalSessionsService {
 
   constructor(
     private prisma: PrismaService,
-    private aiService: AiService,
+    private aiService: AiGoalService,
   ) {}
 
   async create(createGoalSessionDto: CreateGoalSessionDto) {
