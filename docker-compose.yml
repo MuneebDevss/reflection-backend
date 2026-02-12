@@ -1,0 +1,54 @@
+# Docker Compose for Local Development/Testing
+# This is optional and mainly for testing the Docker container locally
+# For production on Render, you'll deploy the Dockerfile directly
+
+services:
+  # NestJS Backend
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: reflection-backend
+    ports:
+      - "3002:3001"
+    environment:
+      # IMPORTANT: Replace these with your actual values
+      # For production, NEVER commit real credentials
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    restart: unless-stopped
+    
+    # Health check to ensure the container is healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+# For local testing, you might want to add a PostgreSQL service
+# Uncomment the section below if you want a local database
+
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: reflection-postgres
+  #   environment:
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: postgres
+  #     POSTGRES_DB: reflection
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U postgres"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+# volumes:
+#   postgres_data:

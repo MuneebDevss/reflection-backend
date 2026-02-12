@@ -1,0 +1,73 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+coverage/
+.nyc_output/
+*.test.ts
+*.spec.ts
+test/
+tests/
+
+# Documentation
+*.md
+docs/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Misc
+.editorconfig
+.eslintrc.js
+.prettierrc
+.prettierignore
+nodemon.json
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Shell scripts (unless you need them)
+*.sh
+
+# Database files (if any local SQLite)
+*.db
+*.sqlite
+*.sqlite3
+
+# Prisma migrations (already in the image via explicit COPY)
+# We want to keep the schema but not migration history in the image
+prisma/migrations/

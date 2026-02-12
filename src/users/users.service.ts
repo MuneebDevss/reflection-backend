@@ -70,6 +70,23 @@ export class UsersService {
     }
   }
 
+  /**
+   * Find user by email - used for authentication
+   * Returns user with password field for authentication purposes
+   */
+  async findByEmail(email: string) {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { email },
+      });
+
+      return user;
+    } catch (error) {
+      this.logger.error(`Failed to fetch user by email: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Failed to fetch user');
+    }
+  }
+
   private isValidUUID(id: string): boolean {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     return uuidRegex.test(id) || /^[a-zA-Z0-9-_]+$/.test(id); // Allow custom IDs like 'user-1'

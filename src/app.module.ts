@@ -8,12 +8,14 @@ import { GoalQuestionsModule } from './goal-questions/goal-questions.module';
 import { GoalTasksModule } from './goal-tasks/goal-tasks.module';
 import { HealthModule } from './health/health.module';
 import { DateTimeModule } from './common/date-time/date-time.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
     DateTimeModule,
     PrismaModule,
     UsersModule,
+    AuthModule,  // Add AuthModule for JWT authentication
     GoalsModule,
     AiModule,
     GoalSessionsModule,
