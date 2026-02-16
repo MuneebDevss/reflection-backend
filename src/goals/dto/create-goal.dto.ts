@@ -1,4 +1,4 @@
-import { IsString, IsDateString, IsInt, Min, Max, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsString, IsDateString, IsNotEmpty, IsOptional } from 'class-validator';
 
 export class CreateGoalDto {
   @IsString()
@@ -15,9 +15,4 @@ export class CreateGoalDto {
 
   @IsDateString()
   deadline: string;
-
-  @IsInt()
-  @Min(0)
-  @Max(100)
-  progress: number = 0;
 }

@@ -1,9 +1,15 @@
-import { IsInt, Min, Max, IsOptional } from 'class-validator';
+import { IsString, IsDateString, IsOptional } from 'class-validator';
 
 export class UpdateGoalDto {
-  @IsInt()
-  @Min(0)
-  @Max(100)
+  @IsString()
   @IsOptional()
-  progress?: number;
+  title?: string;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @IsDateString()
+  @IsOptional()
+  deadline?: string;
 }
