@@ -7,91 +7,137 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
+
+
+// ─────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────
+
+enum BasePriority {
+  low
+  medium
+  high
+}
+
+enum TaskStatus {
+  pending
+  completed
+  graveyard
+}
+
+enum RescheduleReason {
+  auto_overdue
+  priority_battle_loss
+  manual
+}
+
+enum PlanSource {
+  mcp
+  manual
+}
+
+// ─────────────────────────────────────────
+// Models
+// ─────────────────────────────────────────
 
 model User {
-  id           String        @id @default(uuid())
-  email        String        @unique
-  name         String?
-  password     String?       // Made optional for backward compatibility
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  goals        Goal[]
-  goalSessions GoalSession[]
+  id                     String              @id @default(uuid()) @db.Uuid
+  email                  String              @unique
+  passwordHash           String
+  timezone               String              // IANA timezone, e.g. "America/New_York"
+  dailyCapacityMinutes   Int                 @default(480)
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+
+  tasks                  Task[]
+  planGroups             PlanGroup[]
+  mcpTokens              McpToken[]
+  pushSubscriptions      PushSubscription[]
+
+  @@map("users")
 }
 
-model Goal {
-  id           String        @id @default(uuid())
-  userId       String
-  title        String
-  description  String?
-  deadline     DateTime
-  progress     Int           @default(0)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  goalSessions GoalSession[]
-  dailyTasks   DailyTask[]
+model Task {
+  id               String           @id @default(uuid()) @db.Uuid
+  userId           String           @db.Uuid
+  planId           String?          @db.Uuid
+  title            String
+  description      String?
+  scheduledDate    DateTime         @db.Date
+  estimatedMinutes Int
+  basePriority     BasePriority
+  compositeScore   Float            @default(0)
+  bumpCount        Int              @default(0)
+  status           TaskStatus       @default(pending)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan             PlanGroup?       @relation(fields: [planId], references: [id], onDelete: SetNull)
+  rescheduleLogs   RescheduleLog[]
 
   @@index([userId])
+  @@index([planId])
+  @@index([userId, scheduledDate])
+  @@index([userId, status])
+  @@map("tasks")
 }
 
-model DailyTask {
-  id          String   @id @default(uuid())
-  goalId      String
-  title       String
-  description String?
-  date        DateTime
-  difficulty  Int      @default(1)  // 1 = easy, increase over time
-  status      String   @default("PENDING") // PENDING, COMPLETED, SKIPPED
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model PlanGroup {
+  id              String     @id @default(uuid()) @db.Uuid
+  userId          String     @db.Uuid
+  title           String
+  goalDescription String
+  source          PlanSource @default(mcp)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
-  goal        Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
-
-  @@index([goalId, date])
-}
-
-
-model GoalSession {
-  id          String         @id @default(uuid())
-  userId      String
-  rawGoalText String
-  status      String         @default("in_progress") // in_progress, completed, abandoned
-  goalId      String?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  goal        Goal?          @relation(fields: [goalId], references: [id], onDelete: SetNull)
-  questions   GoalQuestion[]
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks           Task[]
 
   @@index([userId])
-  @@index([status])
-  @@index([goalId])
+  @@map("plan_groups")
 }
 
-model GoalQuestion {
-  id        String       @id @default(uuid())
-  sessionId String
-  question  String
-  options   String[] // Array of answer options
-  order     Int
-  createdAt DateTime     @default(now())
-  session   GoalSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  answers   GoalAnswer[]
+model RescheduleLog {
+  id        String           @id @default(uuid()) @db.Uuid
+  taskId    String           @db.Uuid
+  fromDate  DateTime         @db.Date
+  toDate    DateTime         @db.Date
+  reason    RescheduleReason
+  createdAt DateTime         @default(now())
 
-  @@index([sessionId])
-  @@index([sessionId, order])
+  task      Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("reschedule_log")
 }
 
-model GoalAnswer {
-  id         String       @id @default(uuid())
-  questionId String
-  answer     String
-  createdAt  DateTime     @default(now())
-  question   GoalQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+model McpToken {
+  id                 String   @id @default(uuid()) @db.Uuid
+  userId             String   @db.Uuid
+  accessTokenHash    String
+  refreshTokenHash   String
+  expiresAt          DateTime
+  createdAt          DateTime @default(now())
 
-  @@unique([questionId]) // One answer per question
-  @@index([questionId])
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("mcp_tokens")
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  endpoint  String   @unique
+  p256dhKey String
+  authKey   String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }

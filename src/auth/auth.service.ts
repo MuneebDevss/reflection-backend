@@ -35,21 +35,21 @@ export class AuthService {
     try {
       const user = await this.usersService.findByEmail(email);
       
-      if (!user || !user.password) {
+      if (!user || !user.passwordHash) {
         return null;
       }
 
       // Compare provided password with hashed password
-      const isPasswordValid = await bcrypt.compare(password, user.password);
+      const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
       
       if (!isPasswordValid) {
         return null;
       }
 
       // Return user without password
-      const { password: _, ...result } = user;
+      const { passwordHash: _, ...result } = user;
       return result;
-    } catch (error) {
+    } catch (error : any) {
       this.logger.error(`Failed to validate user: ${error.message}`, error.stack);
       return null;
     }
@@ -75,21 +75,22 @@ export class AuthService {
       // Create user with hashed password
       const user = await this.usersService.create({
         email: registerDto.email,
-        name: registerDto.name,
-        password: hashedPassword,
+        passwordHash: hashedPassword,
+        timezone: registerDto.timezone,
       } as any);
 
       // Remove password from response
-      const { password: _, ...userWithoutPassword } = user as any;
+      const { passwordHash: _, ...userWithoutPassword } = user as any;
 
       // Generate JWT token
-      const token = await this.generateToken(user);
+      const token = await this.generateTokens(user);
 
       return {
         user: userWithoutPassword,
-        access_token: token,
+        access_token: token.accessToken,
+        refresh_token: token.refreshToken,
       };
-    } catch (error) {
+    } catch (error : any) {
       if (error instanceof ConflictException) {
         throw error;
       }
@@ -99,31 +100,33 @@ export class AuthService {
     }
   }
 
-  /**
-   * Logs in a user and generates JWT token
-   * @param user - User object (already validated by LocalStrategy)
-   * @returns User object and JWT token
-   */
-  async login(user: any) {
-    const token = await this.generateToken(user);
-
-    return {
-      user,
-      access_token: token,
-    };
-  }
-
+  
   /**
    * Generates JWT token for authenticated user
    * @param user - User object
    * @returns JWT token string
    */
-  private async generateToken(user: any): Promise<string> {
+  async generateTokens(user: any): Promise<{ accessToken: string; refreshToken: string }> {
     const payload = {
       email: user.email,
-      sub: user.id, // 'sub' is standard JWT claim for user identifier
+      sub: user.id,
     };
 
-    return this.jwtService.sign(payload);
+    // 1. Sign the short-lived Access Token
+    const accessToken = await this.jwtService.signAsync(payload, {
+      secret: process.env.JWT_ACCESS_SECRET, // Distinct secret for access tokens
+      expiresIn: '15m',                     // Expires in 15 minutes
+    });
+
+    // 2. Sign the long-lived Refresh Token
+    const refreshToken = await this.jwtService.signAsync(payload, {
+      secret: process.env.JWT_REFRESH_SECRET, // Distinct secret for refresh tokens
+      expiresIn: '7d',                       // Expires in 7 days
+    });
+
+    return {
+      accessToken,
+      refreshToken,
+    };
   }
 }

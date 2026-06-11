@@ -34,7 +34,7 @@ async function bootstrap() {
       transformOptions: {
         enableImplicitConversion: true,
       },
-      exceptionFactory: (errors) => {
+      exceptionFactory: (errors: any[]) => {
         const messages = errors.map(error => ({
           field: error.property,
           errors: Object.values(error.constraints || {}),
@@ -50,7 +50,7 @@ async function bootstrap() {
     const port = process.env.PORT || 3001;
     await app.listen(port);
     logger.log(`🚀 Server running on http://localhost:${port}`);
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Failed to start the application', error.stack);
     process.exit(1);
   }

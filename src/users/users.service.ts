@@ -14,7 +14,7 @@ export class UsersService {
       return await this.prisma.user.create({
         data: createUserDto,
       });
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Failed to create user: ${error.message}`, error.stack);
       
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -32,10 +32,10 @@ export class UsersService {
     try {
       return await this.prisma.user.findMany({
         include: {
-          goals: true,
-        },
+          tasks: true,
+        },  
       });
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Failed to fetch users: ${error.message}`, error.stack);
       throw new InternalServerErrorException('Failed to fetch users');
     }
@@ -51,7 +51,7 @@ export class UsersService {
       const user = await this.prisma.user.findUnique({
         where: { id },
         include: {
-          goals: true,
+          tasks: true,
         },
       });
 
@@ -60,7 +60,7 @@ export class UsersService {
       }
 
       return user;
-    } catch (error) {
+    } catch (error: any ) {
       if (error instanceof NotFoundException || error instanceof BadRequestException) {
         throw error;
       }
@@ -81,7 +81,7 @@ export class UsersService {
       });
 
       return user;
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Failed to fetch user by email: ${error.message}`, error.stack);
       throw new InternalServerErrorException('Failed to fetch user');
     }
