@@ -4,10 +4,6 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Request } from 'express';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
-/**
- * JWT Strategy for validating JWT tokens for refresh tokens
- * Extracts and validates JWT from Authorization header
- */
 @Injectable()
 export class RefreshTokenStrategy extends PassportStrategy(
   Strategy,
@@ -15,22 +11,33 @@ export class RefreshTokenStrategy extends PassportStrategy(
 ) {
   constructor() {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      // 1. Update the extraction strategy to read from cookies instead of headers
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        (req: Request) => {
+          return req?.cookies?.['refresh_token'] || null;
+        },
+      ]),
       secretOrKey: process.env.JWT_REFRESH_SECRET || 'rt-secret',
-      passReqToCallback: true, // Allows us to access the request object below
+      passReqToCallback: true, // Retained so we can grab the raw token string below
     });
   }
-  
-  /**
-   * Validates JWT payload
-   * This method is called automatically after JWT is verified
-   * The return value is attached to request.user
-   */
 
-  validate(req: Request, payload: { sub: string; email: string }) {
-    const refreshToken = req.get('Authorization')?.replace('Bearer', '').trim();
-    if (!refreshToken) throw new UnauthorizedException('Refresh token missing');
-    // Returns both user details and the token itself
-    return { ...payload, refreshToken };
+  /**
+   * Called automatically ONLY after Passport successfully mathematical-validates the JWT.
+   */
+  async validate(req: Request, payload: { sub: string; email: string }) {
+    // 2. Safely grab the raw token string from the cookies for database lookup matching
+    const refreshToken = req.cookies?.['refresh_token'];
+    
+    if (!refreshToken) {
+      throw new UnauthorizedException('Refresh token missing from cookies');
+    }
+
+    // Returns payload + raw token to be attached to req.user
+    return {
+      userId: payload.sub,
+      email: payload.email,
+      refreshToken, 
+    };
   }
 }

@@ -83,13 +83,9 @@ export class AuthService {
       const { passwordHash: _, ...userWithoutPassword } = user as any;
 
       // Generate JWT token
-      const token = await this.generateTokens(user);
+      const token = await this.generateTokens(user.email, user.id);
 
-      return {
-        user: userWithoutPassword,
-        access_token: token.accessToken,
-        refresh_token: token.refreshToken,
-      };
+      return { message: 'User registered successfully' };
     } catch (error : any) {
       if (error instanceof ConflictException) {
         throw error;
@@ -106,21 +102,21 @@ export class AuthService {
    * @param user - User object
    * @returns JWT token string
    */
-  async generateTokens(user: any): Promise<{ accessToken: string; refreshToken: string }> {
+  async generateTokens(email: string, userId: string): Promise<{ accessToken: string; refreshToken: string }> {
     const payload = {
-      email: user.email,
-      sub: user.id,
+      email: email,
+      sub: userId,
     };
 
     // 1. Sign the short-lived Access Token
     const accessToken = await this.jwtService.signAsync(payload, {
-      secret: process.env.JWT_ACCESS_SECRET, // Distinct secret for access tokens
+      secret: process.env.JWT_ACCESS_SECRET || 'your-secret-key-change-in-production', // Distinct secret for access tokens
       expiresIn: '15m',                     // Expires in 15 minutes
     });
 
     // 2. Sign the long-lived Refresh Token
     const refreshToken = await this.jwtService.signAsync(payload, {
-      secret: process.env.JWT_REFRESH_SECRET, // Distinct secret for refresh tokens
+      secret: process.env.JWT_REFRESH_SECRET || 'rt-secret', // Distinct secret for refresh tokens
       expiresIn: '7d',                       // Expires in 7 days
     });
 

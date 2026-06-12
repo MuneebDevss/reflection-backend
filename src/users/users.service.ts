@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException, ConflictException, InternalServerErrorException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateUserDto } from './dto/create-user.dto';
+import { RegisterDto } from './dto/Register.dto';
 import { Prisma } from '@prisma/client';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -9,7 +10,7 @@ export class UsersService {
 
   constructor(private prisma: PrismaService) {}
 
-  async create(createUserDto: CreateUserDto) {
+  async create(createUserDto: RegisterDto) {
     try {
       return await this.prisma.user.create({
         data: createUserDto,
@@ -28,18 +29,7 @@ export class UsersService {
     }
   }
 
-  async findAll() {
-    try {
-      return await this.prisma.user.findMany({
-        include: {
-          tasks: true,
-        },  
-      });
-    } catch (error: any) {
-      this.logger.error(`Failed to fetch users: ${error.message}`, error.stack);
-      throw new InternalServerErrorException('Failed to fetch users');
-    }
-  }
+  
 
   async findOne(id: string) {
     try {
@@ -86,6 +76,28 @@ export class UsersService {
       throw new InternalServerErrorException('Failed to fetch user');
     }
   }
+
+  /**
+   * Update user information 
+   * @param id 
+   * @param updateUserData 
+   * @returns 
+   */
+
+  async update(id: string, updateUserData: Partial<UpdateUserDto>) {
+      // Validate UUID format
+      if (!this.isValidUUID(id)) {
+        throw new BadRequestException('Invalid user ID format');
+      }
+      return this.prisma.user.update({
+        where: { id },
+        data: {
+          dailyCapacityMinutes: updateUserData.dailyCapacityMinutes,
+          timezone: updateUserData.timezone,
+        },
+      });
+    }
+  
 
   private isValidUUID(id: string): boolean {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

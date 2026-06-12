@@ -6,6 +6,7 @@ import { AuthController } from './auth.controller';
 import { UsersModule } from '../users/users.module';
 import { LocalStrategy } from './strategies/local.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { RefreshTokenStrategy } from './strategies/rt.strategy';
 
 /**
  * AuthModule provides JWT-based authentication
@@ -46,6 +47,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     AuthService,
     LocalStrategy,  // Strategy for validating email/password
     JwtStrategy,    // Strategy for validating JWT tokens
+    RefreshTokenStrategy, // Strategy for validating refresh tokens
   ],
   exports: [AuthService], // Export AuthService for use in other modules if needed
 })

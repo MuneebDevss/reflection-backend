@@ -1,6 +1,10 @@
 {
   "compilerOptions": {
     "module": "commonjs",
+    "paths": {
+      "@common/*": ["./src/common/*"],
+      "@auth/*": ["./src/auth/*"]
+    },    
     "declaration": true,
     "removeComments": true,
     "emitDecoratorMetadata": true,

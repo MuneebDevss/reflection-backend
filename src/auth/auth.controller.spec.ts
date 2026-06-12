@@ -117,9 +117,11 @@ describe('AuthController', () => {
         refreshToken: 'rotated-refresh-token',
       };
 
-      mockAuthService.generateTokens.mockResolvedValue(mockTokens);
+      const mockRes = createMockResponse();
 
-      const result = await controller.refresh(mockReq);
+      mockAuthService.generateTokens.mockResolvedValue(mockTokens);
+      
+      const result = await controller.refresh(mockReq,mockRes);
 
       // Verify that the 'refreshToken' property was stripped out from the user payload
       expect(authService.generateTokens).toHaveBeenCalledWith({

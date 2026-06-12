@@ -1,15 +1,17 @@
-import { NestFactory } from '@nestjs/core';
+import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger, BadRequestException } from '@nestjs/common';
 import { AppModule } from './app.module';
-import { AllExceptionsFilter } from './filters/all-exceptions.filter';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from './interceptors/logging.interceptor';
 import { DateTimeService } from './common/date-time/date-time.service';
-
+import cookieParser from 'cookie-parser'; // <-- Import this
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   
   try {
     const app = await NestFactory.create(AppModule);
+    
+    app.use(cookieParser());
     
     // Get DateTimeService from dependency injection container
     const dateTimeService = app.get(DateTimeService);
@@ -34,17 +36,17 @@ async function bootstrap() {
       transformOptions: {
         enableImplicitConversion: true,
       },
-      exceptionFactory: (errors: any[]) => {
-        const messages = errors.map(error => ({
-          field: error.property,
-          errors: Object.values(error.constraints || {}),
-        }));
-        return new BadRequestException({
-          statusCode: 400,
-          message: 'Validation failed',
-          errors: messages,
-        });
-      },
+      // exceptionFactory: (errors: any[]) => {
+      //   const messages = errors.map(error => ({
+      //     field: error.property,
+      //     errors: Object.values(error.constraints || {}),
+      //   }));
+      //   return new BadRequestException({
+      //     statusCode: 400,
+      //     message: 'Validation failed',
+      //     errors: messages,
+      //   });
+      // },
     }));
 
     const port = process.env.PORT || 3001;

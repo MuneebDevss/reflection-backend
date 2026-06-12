@@ -14,6 +14,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { RefreshTokenGuard } from './guards/rt.guard';
 import { Response } from 'express';
+import { GetUser } from '@auth/decorators';
 /**
  * AuthController handles authentication endpoints
  * Provides registration and login functionality
@@ -86,7 +87,7 @@ export class AuthController {
   @UseGuards(LocalAuthGuard)
   @Post('login')
   async login(@Req() req, @Res({ passthrough: true }) res: Response) {
-    const tokens = await this.authService.generateTokens(req.user);
+    const tokens = await this.authService.generateTokens(req.user.email, req.user.id);
 
     // 1. Attach the Access Token as an httpOnly cookie
     res.cookie('access_token', tokens.accessToken, {
@@ -107,34 +108,44 @@ export class AuthController {
     return { success: true, message: 'Logged in successfully' };
   }
 
-  /**
-   * Refresh JWT token using refresh token
+ /**
+   * Refreshes authentication tokens using a valid Refresh Token cookie.
+   * Implements Refresh Token Rotation (RTR) for optimal security.
    * POST /auth/refresh
-   *
-   * Uses RefreshTokenGuard to validate refresh token via RefreshTokenStrategy
-   * If refresh token is valid, returns new JWT access token
-   *
-   * @param req - Request object with validated user and refresh token (populated by RefreshTokenStrategy)
-   * @return New JWT access token
-   *  Example response:
-   * {
-   *   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-   *  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-   * }
-   * Note: The refresh token is typically sent in the Authorization header as a Bearer token
-   * Example request header:
-   * Authorization: Bearer <refresh_token>
    */
   @UseGuards(RefreshTokenGuard)
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  async refresh(@Request() req) {
-    // req.user is populated by RefreshTokenStrategy after successful validation
-    const { refreshToken, ...user } = req.user;
-    const newAccessToken = await this.authService.generateTokens(user);
-    return {
-      access_token: newAccessToken.accessToken,
-      refresh_token: newAccessToken.refreshToken, // Optionally return the same refresh token or generate a new one
+  async refresh(
+    @Req() req: any, 
+    @Res({ passthrough: true }) res: Response
+  ) {
+    // 1. req.user is safely populated by your updated RefreshTokenStrategy
+    const { userId, email, refreshToken: oldRefreshToken } = req.user;
+
+    // 2. Generate a fresh pair of tokens (RTR - Refresh Token Rotation)
+    // Passing both parameters allows your service to revoke the old token in the DB
+    const tokens = await this.authService.generateTokens(email, userId);
+
+    // 3. Overwrite the old cookies with the newly rotated tokens
+    res.cookie('access_token', tokens.accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 15 * 60 * 1000, // 15 minutes matching token expiration
+    });
+
+    res.cookie('refresh_token', tokens.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days matching token expiration
+    });
+
+    // 4. Return a clean, token-free status message to the frontend
+    return { 
+      success: true, 
+      message: 'Tokens refreshed successfully' 
     };
   }
   /**
