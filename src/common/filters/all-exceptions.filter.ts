@@ -59,6 +59,24 @@ export class AllExceptionsFilter implements ExceptionFilter {
         });
         break;
       }
+      case 'P2021': {
+        const status = HttpStatus.NOT_FOUND;
+        response.status(status).json({
+          statusCode: status,
+          message: 'Table Does Not Exist',
+          error: 'Not Found',
+        });
+        break;
+      }
+      case 'P1001': {
+        const status = HttpStatus.NOT_FOUND;
+        response.status(status).json({
+          statusCode: status,
+          message: 'Database Not Reachable',
+          error: 'Not Found',
+        });
+        break;
+      }
       default:
         // Hand off any unhandled Prisma errors to the default NestJS global filter
         break;

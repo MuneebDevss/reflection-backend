@@ -4,7 +4,7 @@
   "description": "Reflection backend API with NestJS and Prisma",
   "main": "dist/main.js",
   "scripts": {
-    "build": "tsc",
+    "build": "prisma generate && nest build && prisma migrate deploy",
     "start": "node dist/src/main.js",
     "dev": "ts-node -r tsconfig-paths/register src/main.ts",
     "prisma:generate": "prisma generate",

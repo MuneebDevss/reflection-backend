@@ -28,7 +28,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
    * The return value is attached to request.user
    */
   async validate(payload: any) {
-    console.log('JWT payload validated:', payload);
     if (!payload.sub || !payload.email) {
       throw new UnauthorizedException('Invalid token payload');
     }

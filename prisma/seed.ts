@@ -12,7 +12,8 @@ async function main() {
     create: {
       id: 'user-1',
       email: 'test@example.com',
-      name: 'Test User',
+      passwordHash: 'hashedpassword',
+      timezone: 'UTC',
     },
   });
 

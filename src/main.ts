@@ -36,21 +36,10 @@ async function bootstrap() {
       transformOptions: {
         enableImplicitConversion: true,
       },
-      // exceptionFactory: (errors: any[]) => {
-      //   const messages = errors.map(error => ({
-      //     field: error.property,
-      //     errors: Object.values(error.constraints || {}),
-      //   }));
-      //   return new BadRequestException({
-      //     statusCode: 400,
-      //     message: 'Validation failed',
-      //     errors: messages,
-      //   });
-      // },
     }));
 
     const port = process.env.PORT || 3001;
-    await app.listen(port);
+    await app.listen(port, '0.0.0.0');
     logger.log(`🚀 Server running on http://localhost:${port}`);
   } catch (error: any) {
     logger.error('Failed to start the application', error.stack);
