@@ -2,215 +2,125 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class DateTimeService {
+
+  now(): Date {
+    return new Date();
+  }
+
+  getElapsedTime(start: Date): number {
+    const now = this.now();
+    return now.getTime() - start.getTime();
+  }
   /**
-   * Gets the start of today (00:00:00.000) in UTC timezone.
-   * @returns Date object set to the beginning of the current day in UTC
-   * @example
-   * // Returns: 2026-01-28T00:00:00.000Z
-   * getStartOfTodayUTC()
+   * Returns "today" as a YYYY-MM-DD string in the user's local timezone.
+   * This is the only method that intentionally converts UTC → local time,
+   * used purely for display purposes (e.g. showing the user their local date).
+   * All internal scheduling logic uses UTC — do not use this for engine logic.
    */
-  getStartOfTodayUTC(): Date {
-    return new Date(new Date().setUTCHours(0, 0, 0, 0));
+  getCurrentDateInTimezone(timezone: string): string {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(new Date());
+
+    const year  = parts.find((p) => p.type === 'year')!.value;
+    const month = parts.find((p) => p.type === 'month')!.value;
+    const day   = parts.find((p) => p.type === 'day')!.value;
+
+    return `${year}-${month}-${day}`;
   }
 
   /**
-   * Gets the end of today (24:00:00.000 or start of next day) in UTC timezone.
-   * @returns Date object set to the beginning of the next day in UTC
+   * Returns a new Date set to UTC midnight (00:00:00.000Z) for the given date.
+   * Uses setUTCHours to guarantee UTC regardless of the server's local timezone.
+   *
    * @example
-   * // Returns: 2026-01-29T00:00:00.000Z
-   * getEndOfTodayUTC()
+   * startOfDay(new Date('2026-06-14T18:30:00Z')) // → 2026-06-14T00:00:00.000Z
    */
-  getEndOfTodayUTC(): Date {
-    return new Date(new Date().setUTCHours(24, 0, 0, 0));
+  startOfDay(date: Date): Date {
+    const d = new Date(date);
+    d.setUTCHours(0, 0, 0, 0);
+    return d;
   }
 
   /**
-   * Gets the start of day (00:00:00.000) in local timezone for a given date.
-   * @param date - Optional date to normalize. Defaults to current date.
-   * @returns Date object set to the beginning of the day (local timezone)
+   * Returns the number of whole elapsed calendar days between two dates.
+   * Operates on raw milliseconds (always UTC) so it is timezone-safe by nature.
+   * Math.round absorbs any floating-point drift from DST boundaries.
+   *
    * @example
-   * // Returns: 2026-01-28T00:00:00.000 (local time)
-   * getStartOfDayLocal()
-   */
-  getStartOfDayLocal(date: Date = new Date()): Date {
-    const normalized = new Date(date);
-    normalized.setHours(0, 0, 0, 0);
-    return normalized;
-  }
-
-  /**
-   * Adds a specified number of days to a date.
-   * @param days - Number of days to add
-   * @param to - Starting date. Defaults to current date.
-   * @returns New Date object with days added
-   * @example
-   * // Returns date 7 days from now
-   * addDays(7)
-   */
-  addDays(days: number, to: Date = new Date()): Date {
-    const date = new Date(to);
-    date.setDate(date.getDate() + days);
-    return date;
-  }
-
-  /**
-   * Subtracts a specified number of days from a date.
-   * @param days - Number of days to subtract
-   * @param from - Starting date. Defaults to current date.
-   * @returns New Date object with days subtracted
-   * @example
-   * // Returns date from 7 days ago
-   * subtractDays(7)
-   */
-  subtractDays(days: number, from: Date = new Date()): Date {
-    const date = new Date(from);
-    date.setDate(date.getDate() - days);
-    return date;
-  }
-
-  /**
-   * Subtracts a specified number of months from a date.
-   * @param months - Number of months to subtract
-   * @param from - Starting date. Defaults to current date.
-   * @returns New Date object with months subtracted
-   * @example
-   * // Returns date from 1 month ago
-   * subtractMonths(1)
-   */
-  subtractMonths(months: number, from: Date = new Date()): Date {
-    const date = new Date(from);
-    date.setMonth(date.getMonth() - months);
-    return date;
-  }
-
-  /**
-   * Gets the earliest possible date (Unix epoch: January 1, 1970).
-   * @returns Date object representing Unix epoch (time 0)
-   * @example
-   * // Returns: 1970-01-01T00:00:00.000Z
-   * getEpochDate()
-   */
-  getEpochDate(): Date {
-    return new Date(0);
-  }
-
-  /**
-   * Calculates the number of days between two dates.
-   * @param from - Start date
-   * @param to - End date
-   * @returns Number of days (can be fractional). Returns ceiling value for whole days.
-   * @example
-   * // Returns: 7
-   * getDaysDifference(startDate, endDate)
+   * getDaysDifference(yesterday, today) // → 1
+   * getDaysDifference(today, today)     // → 0
    */
   getDaysDifference(from: Date, to: Date): number {
-    const millisecondsDiff = to.getTime() - from.getTime();
-    const daysDiff = millisecondsDiff / (1000 * 60 * 60 * 24);
-    return Math.ceil(daysDiff);
+    const ms = to.getTime() - from.getTime();
+    return Math.round(ms / (1000 * 60 * 60 * 24));
   }
 
   /**
-   * Converts a date to ISO string and extracts only the date portion (YYYY-MM-DD).
-   * @param date - Date to convert
-   * @returns Date string in YYYY-MM-DD format
+   * Returns a new Date with `days` added, in UTC.
+   * Uses setUTCDate/getUTCDate to avoid local-timezone day boundary shifts.
+   *
    * @example
-   * // Returns: "2026-01-28"
-   * toDateOnlyString(new Date())
+   * addDays(new Date('2026-01-31T00:00:00Z'), 1) // → 2026-02-01T00:00:00.000Z
    */
-  toDateOnlyString(date: Date): string {
-    return date.toISOString().split('T')[0];
+  addDays(date: Date, days: number): Date {
+    const d = new Date(date);
+    d.setUTCDate(d.getUTCDate() + days);
+    return d;
   }
 
   /**
-   * Validates whether a date is valid (not NaN).
-   * @param date - Date object or string to validate
-   * @returns True if date is valid, false otherwise
+   * Returns a new Date with `days` subtracted, in UTC.
+   *
    * @example
-   * // Returns: true
-   * isValidDate(new Date())
-   * // Returns: false
-   * isValidDate(new Date('invalid'))
+   * subtractDays(new Date('2026-01-08T00:00:00Z'), 7) // → 2026-01-01T00:00:00.000Z
    */
-  isValidDate(date: Date | string): boolean {
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
-    return !isNaN(dateObj.getTime());
+  subtractDays(date: Date, days: number): Date {
+    return this.addDays(date, -days);
   }
 
   /**
-   * Parses a string or date input into a Date object.
-   * @param input - Date string or Date object
-   * @returns Parsed Date object
-   * @throws Error if date is invalid
+   * Returns a new Date with `months` subtracted, in UTC.
+   * Uses setUTCMonth/getUTCMonth to stay UTC-safe.
+   *
    * @example
-   * // Returns: Date object
-   * parseDate("2026-01-28")
+   * subtractMonths(new Date('2026-03-15T00:00:00Z'), 1) // → 2026-02-15T00:00:00.000Z
    */
-  parseDate(input: Date | string): Date {
-    const date = typeof input === 'string' ? new Date(input) : input;
-    if (!this.isValidDate(date)) {
-      throw new Error(`Invalid date: ${input}`);
-    }
-    return date;
+  subtractMonths(date: Date, months: number): Date {
+    const d = new Date(date);
+    d.setUTCMonth(d.getUTCMonth() - months);
+    return d;
   }
 
-  /**
-   * Gets the current timestamp in milliseconds.
-   * @returns Current time in milliseconds since Unix epoch
-   * @example
-   * // Returns: 1738051200000
-   * now()
-   */
-  now(): number {
-    return Date.now();
-  }
-
-  /**
-   * Calculates elapsed time in milliseconds from a start timestamp.
-   * @param startTime - Start timestamp in milliseconds
-   * @returns Elapsed time in milliseconds
-   * @example
-   * const start = dateTimeService.now();
-   * // ... some operation ...
-   * const elapsed = dateTimeService.getElapsedTime(start); // Returns: 150 (ms)
-   */
-  getElapsedTime(startTime: number): number {
-    return Date.now() - startTime;
-  }
-
-  /**
-   * Gets the current date and time.
-   * @returns New Date object representing current moment
-   * @example
-   * // Returns: current Date object
-   * getCurrentDate()
-   */
+  /** Returns the current moment as a Date (UTC internally, as all JS Dates are). */
   getCurrentDate(): Date {
     return new Date();
   }
 
   /**
-   * Converts any date to ISO string format.
-   * @param date - Optional date to convert. Defaults to current date.
-   * @returns ISO 8601 formatted string
-   * @example
-   * // Returns: "2026-01-28T12:34:56.789Z"
-   * toISOString()
+   * Parses a string or Date into a validated Date object.
+   * @throws if the input does not represent a valid date.
    */
-  toISOString(date: Date = new Date()): string {
-    return date.toISOString();
+  parseDate(input: Date | string): Date {
+    const d = typeof input === 'string' ? new Date(input) : new Date(input);
+    if (isNaN(d.getTime())) throw new Error(`Invalid date: ${input}`);
+    return d;
   }
 
   /**
-   * Normalizes a date to UTC midnight (00:00:00.000).
-   * @param date - Optional date to normalize. Defaults to current date.
-   * @returns Date object set to UTC midnight
-   * @example
-   * // Returns: 2026-01-28T00:00:00.000Z
-   * normalizeToUTCMidnight()
+   * Returns a YYYY-MM-DD string for the given date in UTC.
+   * toISOString() always emits UTC, so this is timezone-safe.
    */
-  normalizeToUTCMidnight(date: Date = new Date()): Date {
-    const normalized = new Date(date);
-    normalized.setUTCHours(0, 0, 0, 0);
-    return normalized;
+  toDateString(date: Date): string {
+    return date.toISOString().split('T')[0];
+  }
+
+  /** Returns true if the given date or string represents a valid date. */
+  isValidDate(date: Date | string): boolean {
+    const d = typeof date === 'string' ? new Date(date) : date;
+    return !isNaN(d.getTime());
   }
 }

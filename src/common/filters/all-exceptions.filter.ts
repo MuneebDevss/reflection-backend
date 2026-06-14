@@ -98,7 +98,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     // Send response
     response.status(status).json({
       statusCode: status,
-      timestamp: this.dateTimeService.toISOString(),
+      timestamp: new Date().toISOString(),
       path: request.url,
       method: request.method,
       message,
