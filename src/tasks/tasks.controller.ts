@@ -9,6 +9,7 @@ import {
   Request,
   UseGuards,
   ParseUUIDPipe,
+  Query,
 } from '@nestjs/common';
 import { Request as ExpressRequest } from 'express';
 import { TasksService } from './tasks.service';
@@ -16,6 +17,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UpdateTaskDto } from './dto/update-tasks.dto';
 import { CreateTaskDto } from './dto/create-tasks.dto';
 import { GetUser } from '@auth/decorators';
+import { GetTasksByDateDto } from './dto/get-tasks-by-date.dto';
 
 /**
  * Interface representing an Express request payload injected with auth data via JwtAuthGuard.
@@ -57,6 +59,21 @@ export class TasksController {
   @Get('graveyard')
   async getGraveyardTasks(@GetUser('userId') userId: string) {
     return this.tasksService.getGraveyardTasks(userId);
+  }
+
+  /**
+   * Retrieves all tasks scheduled for a specific date,
+   * along with total scheduled minutes and daily capacity
+   * @param req - Authenticated request containing user context
+   * @query data - Payload containing date range and capacity inclusion flag
+   * @returns Object containing the date, array of tasks, total scheduled minutes, and daily capacity
+   */
+  @Get('by-date')
+  async getTasksByDate(
+    @GetUser('userId') userId: string,
+    @Query() data: GetTasksByDateDto,
+  ) {
+    return this.tasksService.getTasksByDate(userId, data);
   }
 
   /**
@@ -112,4 +129,5 @@ export class TasksController {
     // Note: Production environments should ensure this task belongs to req.userId inside the service
     return this.tasksService.deleteTask(id);
   }
+  
 }

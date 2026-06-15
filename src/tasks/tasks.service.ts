@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BasePriority, Task, TaskStatus } from '@prisma/client';
 import { CreateTaskDto } from './dto/create-tasks.dto';
 import { UpdateTaskDto } from './dto/update-tasks.dto';
+import { GetTasksByDateDto } from './dto/get-tasks-by-date.dto';
 
 @Injectable()
 export class TasksService {
@@ -53,6 +54,7 @@ export class TasksService {
         scheduledDate: data.scheduleDate,
         estimatedMinutes: data.estimatedMinutes,
         basePriority: data.basePriority,
+        status: data.status,
       },
     });
   }
@@ -112,5 +114,50 @@ export class TasksService {
       },
     });
   }
+
+  async getTasksByDate(userId: string, dto: GetTasksByDateDto): Promise<{
+  date: string // 'YYYY-MM-DD'
+  tasks: Task[]
+  totalScheduledMinutes: number
+  dailyCapacityMinutes: number
+  }> {
+  const { startDate, endDate, includeCapacity } = dto;
+
+  // Normalize date bounds and fetch tasks in parallel with optional user lookup
+  startDate.setHours(0, 0, 0, 0);
+  endDate.setHours(23, 59, 59, 999);
+
+  const [tasks, user] = await Promise.all([
+    this.prisma.task.findMany({
+      where: {
+        userId,
+        scheduledDate: { gte: startDate, lte: endDate },
+        status: { in: [TaskStatus.pending, TaskStatus.completed] },
+      },
+    }),
+    includeCapacity
+      ? this.prisma.user.findUnique({
+          where: { id: userId },
+          select: { dailyCapacityMinutes: true },
+        })
+      : Promise.resolve(null),
+  ]);
+
+  if (includeCapacity && !user) {
+    throw new NotFoundException(`User not found: ${userId}`);
+  }
+
+  const totalScheduledMinutes = tasks.reduce(
+    (sum, task) => sum + (task.estimatedMinutes ?? 0),
+    0,
+  );
+
+  return {
+    date: startDate.toISOString().split('T')[0],
+    tasks,
+    totalScheduledMinutes,
+    dailyCapacityMinutes: user?.dailyCapacityMinutes ?? 480,
+  };
+}
 
 }

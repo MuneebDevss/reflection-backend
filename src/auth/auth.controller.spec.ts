@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
-import { HttpStatus } from '@nestjs/common';
 import { Response } from 'express';
 
 describe('AuthController', () => {
@@ -17,7 +16,7 @@ describe('AuthController', () => {
     return res as Response;
   };
 
-  // Mocked implementation of AuthService
+  // Mocked implementation of AuthService updated to match real usage
   const mockAuthService = {
     register: jest.fn(),
     generateTokens: jest.fn(),
@@ -58,91 +57,79 @@ describe('AuthController', () => {
         access_token: 'mock-access-token',
       };
 
+      const mockResponse = createMockResponse();
       mockAuthService.register.mockResolvedValue(expectedResult);
 
-      const result = await controller.register(dto);
+      const result = await controller.register(dto, mockResponse);
 
-      expect(authService.register).toHaveBeenCalledWith(dto);
+      expect(authService.register).toHaveBeenCalledWith(dto, mockResponse);
       expect(result).toEqual(expectedResult);
     });
   });
 
   describe('login', () => {
-    it('should generate tokens and set httpOnly access and refresh cookies', async () => {
-      const mockReq = { user: { id: 'uuid', email: 'test@example.com' } };
+    it('should call generateTokens with email, id, and response context', async () => {
+      const mockReq = { user: { id: 'uuid-1234', email: 'test@example.com' } };
       const mockRes = createMockResponse();
       
-      const mockTokens = {
-        accessToken: 'new-access-token',
-        refreshToken: 'new-refresh-token',
+      const expectedTokensResult = {
+        user: { id: 'uuid-1234', email: 'test@example.com' },
+        access_token: 'new-access-token',
       };
 
-      mockAuthService.generateTokens.mockResolvedValue(mockTokens);
+      mockAuthService.generateTokens.mockResolvedValue(expectedTokensResult);
 
       const result = await controller.login(mockReq, mockRes);
 
-      // Verify AuthService tokens generation was called with request user
-      expect(authService.generateTokens).toHaveBeenCalledWith(mockReq.user);
+      // Matches controller implementation precisely: (email, id, res)
+      expect(authService.generateTokens).toHaveBeenCalledWith(
+        mockReq.user.email,
+        mockReq.user.id,
+        mockRes
+      );
 
-      // Verify access token cookie was correctly set
-      expect(mockRes.cookie).toHaveBeenCalledWith('access_token', mockTokens.accessToken, expect.objectContaining({
-        httpOnly: true,
-        sameSite: 'strict',
-        maxAge: 15 * 60 * 1000,
-      }));
-
-      // Verify refresh token cookie was correctly set
-      expect(mockRes.cookie).toHaveBeenCalledWith('refresh_token', mockTokens.refreshToken, expect.objectContaining({
-        httpOnly: true,
-        sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      }));
-
-      expect(result).toEqual({ success: true, message: 'Logged in successfully' });
+      expect(result).toEqual(expectedTokensResult);
     });
   });
 
   describe('refresh', () => {
-    it('should accept a validated refresh token payload and yield new pairs', async () => {
+    it('should accept a validated refresh token payload and yield new pairs via service', async () => {
       const mockReq = {
         user: {
-          id: 'uuid',
+          userId: 'uuid-1234',
           email: 'test@example.com',
           refreshToken: 'old-refresh-token',
         },
       };
-
-      const mockTokens = {
-        accessToken: 'rotated-access-token',
-        refreshToken: 'rotated-refresh-token',
-      };
-
       const mockRes = createMockResponse();
 
-      mockAuthService.generateTokens.mockResolvedValue(mockTokens);
+      const expectedTokensResult = {
+        user: { id: 'uuid-1234', email: 'test@example.com' },
+        access_token: 'rotated-access-token',
+      };
+
+      mockAuthService.generateTokens.mockResolvedValue(expectedTokensResult);
       
-      const result = await controller.refresh(mockReq,mockRes);
+      const result = await controller.refresh(mockReq, mockRes);
 
-      // Verify that the 'refreshToken' property was stripped out from the user payload
-      expect(authService.generateTokens).toHaveBeenCalledWith({
-        id: 'uuid',
-        email: 'test@example.com',
-      });
+      // Asserts handling matches updated strategy payload structure: (email, userId, res)
+      expect(authService.generateTokens).toHaveBeenCalledWith(
+        mockReq.user.email,
+        mockReq.user.userId,
+        mockRes
+      );
 
-      expect(result).toEqual({
-        access_token: mockTokens.accessToken,
-        refresh_token: mockTokens.refreshToken,
-      });
+      expect(result).toEqual(expectedTokensResult);
     });
   });
 
   describe('logout', () => {
-    it('should call clearCookie for both tokens and confirm operation', async () => {
+    it('should call clearCookie for both tokens directly and confirm operation', async () => {
       const mockRes = createMockResponse();
 
       const result = await controller.logout(mockRes);
 
-      // Assert clean commands are emitted to cookies storage
+      // Assert clear commands match controller definitions exactly
       expect(mockRes.clearCookie).toHaveBeenCalledWith('access_token', expect.objectContaining({
         httpOnly: true,
         sameSite: 'strict',

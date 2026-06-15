@@ -8,7 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import { RegisterDto } from './dto/register.dto';
 import * as bcrypt from 'bcrypt';
-
+import { Response } from 'express';
 /**
  * AuthService handles authentication logic
  * - User registration with password hashing
@@ -60,7 +60,7 @@ export class AuthService {
    * @param registerDto - Registration data including email, password, and optional name
    * @returns User object and JWT token
    */
-  async register(registerDto: RegisterDto) {
+  async register(registerDto: RegisterDto, res: Response) {
     try {
       // Check if user already exists
       const existingUser = await this.usersService.findByEmail(registerDto.email);
@@ -83,7 +83,7 @@ export class AuthService {
       const { passwordHash: _, ...userWithoutPassword } = user as any;
 
       // Generate JWT token
-      const token = await this.generateTokens(user.email, user.id);
+      await this.generateTokens(user.email, user.id, res);
 
       return { message: 'User registered successfully' };
     } catch (error : any) {
@@ -102,7 +102,7 @@ export class AuthService {
    * @param user - User object
    * @returns JWT token string
    */
-  async generateTokens(email: string, userId: string): Promise<{ accessToken: string; refreshToken: string }> {
+  async generateTokens(email: string, userId: string, res: Response): Promise<void> {
     const payload = {
       email: email,
       sub: userId,
@@ -120,9 +120,20 @@ export class AuthService {
       expiresIn: '7d',                       // Expires in 7 days
     });
 
-    return {
-      accessToken,
-      refreshToken,
-    };
+    // 1. Attach the Access Token as an httpOnly cookie
+    res.cookie('access_token', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', // true in production (HTTPS)
+      sameSite: 'strict',
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+
+    // 2. Attach the Refresh Token as a separate httpOnly cookie
+    res.cookie('refresh_token', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
   }
 }

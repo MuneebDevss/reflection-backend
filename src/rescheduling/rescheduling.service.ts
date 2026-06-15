@@ -45,7 +45,7 @@ export class ReschedulingService {
    * by ALL tasks that day (pending + completed), because a completed task
    * represents real time the person already spent.
    */
-  async rescheduleTasks(userId: string): Promise<RescheduleResult> {
+  async rescheduleTasks(userId: string, date?: Date): Promise<RescheduleResult> {
     const user = await this.prismaService.user.findUnique({
       where: { id: userId },
       select: { dailyCapacityMinutes: true},
@@ -75,7 +75,13 @@ export class ReschedulingService {
     const tasksToUpdate: Prisma.TaskUpdateArgs[] = [];
     const logsToCreate: Prisma.RescheduleLogCreateInput[] = [];
 
-    let currentDate = new Date(today);
+    /**  if called using the endpoint we will use the user passed date
+     * Otherise for the cron job we will use the UTC date. 
+     * This allows us to have a consistent "today" boundary for users in different timezones, 
+     * while also giving us flexibility to run the engine for any arbitrary date if needed
+     *  (e.g. for backfilling or testing).
+     * */
+    let currentDate = date || new Date(today);
     let availableCapacity = Math.max(0, capacityLimit - this.sumMinutes(todayConsumed));
 
     // Each task enters the pipeline carrying its original scheduledDate.

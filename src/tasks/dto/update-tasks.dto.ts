@@ -31,4 +31,8 @@ export class UpdateTaskDto {
     @IsEnum(BasePriority, {message: 'Base priority must be one of low, medium, or high'})
     basePriority?: BasePriority;
 
+    @IsOptional()
+    @IsEnum(['pending', 'completed'], {message: 'Status must be either pending or completed'})
+    status?: 'pending' | 'completed';
+
 }

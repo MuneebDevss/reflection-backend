@@ -14,7 +14,6 @@ import { RegisterDto } from './dto/register.dto';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { RefreshTokenGuard } from './guards/rt.guard';
 import { Response } from 'express';
-import { GetUser } from '@auth/decorators';
 /**
  * AuthController handles authentication endpoints
  * Provides registration and login functionality
@@ -37,22 +36,11 @@ export class AuthController {
    *   "timezone": "America/New_York"
    * }
    * 
-   * Example response:
-   * {
-   *   "user": {
-   *     "id": "uuid",
-   *     "email": "user@example.com",
-   *     "timezone": "America/New_York",
-   *     "createdAt": "2026-02-12T...",
-   *     "updatedAt": "2026-02-12T..."
-   *   },
-   *   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-   * }
    */
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  async register(@Body() registerDto: RegisterDto) {
-    return this.authService.register(registerDto);
+  async register(@Body() registerDto: RegisterDto, @Res({ passthrough: true }) res: Response) {
+    return this.authService.register(registerDto, res);
   }
 
   /**
@@ -72,40 +60,11 @@ export class AuthController {
    *   "password": "securePassword123"
    * }
    * 
-   * Example response:
-   * {
-   *   "user": {
-   *     "id": "uuid",
-   *     "email": "user@example.com",
-   *     "timezone": "America/New_York",
-   *     "createdAt": "2026-02-12T...",
-   *     "updatedAt": "2026-02-12T..."
-   *   },
-   *   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-   * }
    */
   @UseGuards(LocalAuthGuard)
   @Post('login')
   async login(@Req() req, @Res({ passthrough: true }) res: Response) {
-    const tokens = await this.authService.generateTokens(req.user.email, req.user.id);
-
-    // 1. Attach the Access Token as an httpOnly cookie
-    res.cookie('access_token', tokens.accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // true in production (HTTPS)
-      sameSite: 'strict',
-      maxAge: 15 * 60 * 1000, // 15 minutes
-    });
-
-    // 2. Attach the Refresh Token as a separate httpOnly cookie
-    res.cookie('refresh_token', tokens.refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
-
-    return { success: true, message: 'Logged in successfully' };
+    return  this.authService.generateTokens(req.user.email, req.user.id, res);
   }
 
  /**
@@ -125,28 +84,7 @@ export class AuthController {
 
     // 2. Generate a fresh pair of tokens (RTR - Refresh Token Rotation)
     // Passing both parameters allows your service to revoke the old token in the DB
-    const tokens = await this.authService.generateTokens(email, userId);
-
-    // 3. Overwrite the old cookies with the newly rotated tokens
-    res.cookie('access_token', tokens.accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 15 * 60 * 1000, // 15 minutes matching token expiration
-    });
-
-    res.cookie('refresh_token', tokens.refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days matching token expiration
-    });
-
-    // 4. Return a clean, token-free status message to the frontend
-    return { 
-      success: true, 
-      message: 'Tokens refreshed successfully' 
-    };
+    return this.authService.generateTokens(email, userId, res);
   }
   /**
    * Logout user by clearing authentication cookies
