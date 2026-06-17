@@ -8,6 +8,7 @@ import {
     Max, 
     IsEnum} from 'class-validator';
 import { BasePriority } from '@prisma/client';
+import { Type } from 'class-transformer';
 export class CreateTaskDto {
     @IsNotEmpty()
     @IsString({message: 'Title must be a string'})
@@ -17,9 +18,10 @@ export class CreateTaskDto {
     @IsString({message: 'Description must be a string'})
     description?: string;
 
-    @IsNotEmpty()
-    @IsDate({message: 'Schedule date must be a valid date'})
-    scheduleDate: Date;
+    @IsOptional()
+    @Type(() => Date) // Converts the incoming string into a real JS Date object
+    @IsDate({message: 'Scheduled date must be a valid date'})
+    scheduleDate?: Date;
 
     @IsOptional()
     @IsInt({message: 'Estimated minutes must be an integer'})

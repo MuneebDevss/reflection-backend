@@ -18,6 +18,7 @@ import { UpdateTaskDto } from './dto/update-tasks.dto';
 import { CreateTaskDto } from './dto/create-tasks.dto';
 import { GetUser } from '@auth/decorators';
 import { GetTasksByDateDto } from './dto/get-tasks-by-date.dto';
+import { GetTasks } from './dto/get-tasks.dto';
 
 /**
  * Interface representing an Express request payload injected with auth data via JwtAuthGuard.
@@ -35,8 +36,8 @@ export class TasksController {
    * @returns Array of tasks
    */
   @Get()
-  async getTasks(@GetUser('userId') userId: string) {
-    return this.tasksService.getTasks(userId);
+  async getTasks(@GetUser('userId') userId: string, @Query() query: GetTasks) {
+    return this.tasksService.getTasks(userId , query);
   }
 
   /**

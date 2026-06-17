@@ -4,6 +4,7 @@ import { TasksService } from './tasks.service';
 import { BasePriority, Task, TaskStatus } from '@prisma/client';
 import { CreateTaskDto } from './dto/create-tasks.dto';
 import { UpdateTaskDto } from './dto/update-tasks.dto';
+import { GetTasksByDateDto } from './dto/get-tasks-by-date.dto';
 
 describe('TasksController', () => {
   let controller: TasksController;
@@ -74,7 +75,7 @@ describe('TasksController', () => {
       const mockResult: Task[] = [mockTask];
       mockTasksService.getTasks.mockResolvedValue(mockResult);
 
-      const result = await controller.getTasks(mockRequest);
+      const result = await controller.getTasks(mockRequest, new GetTasksByDateDto());
 
       expect(service.getTasks).toHaveBeenCalledWith(mockUserId);
       expect(result).toEqual(mockResult);

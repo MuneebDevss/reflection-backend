@@ -4,6 +4,7 @@ import { BasePriority, Task, TaskStatus } from '@prisma/client';
 import { CreateTaskDto } from './dto/create-tasks.dto';
 import { UpdateTaskDto } from './dto/update-tasks.dto';
 import { GetTasksByDateDto } from './dto/get-tasks-by-date.dto';
+import { GetTasks } from './dto/get-tasks.dto';
 
 @Injectable()
 export class TasksService {
@@ -14,11 +15,25 @@ export class TasksService {
    * @param userId - Unique identifier of the user
    * @returns Array of task objects
    */
-  async getTasks(userId: string): Promise<Task[]> {
-    return this.prisma.task.findMany({
-      where: { userId },
-    });
-  }
+  async getTasks(userId: string, query: GetTasks): Promise<Task[]> {
+  return this.prisma.task.findMany({
+    where: {
+      userId,
+      ...(query.status && { status: query.status }),
+      ...(query.planId && { planId: query.planId }),
+      ...(query.startDate && query.endDate && {
+        scheduledDate: {
+          gte: query.startDate,
+          lte: query.endDate,
+        },
+      }),
+    },
+    orderBy: [
+      { scheduledDate: 'asc' },
+      { compositeScore: 'desc' }, // within same day, higher score first
+    ],
+  });
+}
 
   /**
    * Creates a new task for a specific user

@@ -7,6 +7,7 @@ import {
     Min, 
     Max, 
     IsEnum} from 'class-validator';
+import { Type } from 'class-transformer';
 import { BasePriority } from '@prisma/client';
 export class UpdateTaskDto {
     @IsOptional()
@@ -19,12 +20,14 @@ export class UpdateTaskDto {
     description?: string;
 
     @IsOptional()
-    @IsDate({message: 'Schedule date must be a valid date'})
+    @Type(() => Date) // Converts the incoming string into a real JS Date object
+    @IsDate({message: 'Scheduled date must be a valid date'})
     scheduleDate?: Date;
 
     @IsOptional()
     @IsInt({message: 'Estimated minutes must be an integer'})
     @Min(0, {message: 'Estimated minutes must be a positive integer'})
+    @Max(1440,{message: "Estimated minutes cannot be higher than 1440"})
     estimatedMinutes?: number;
 
     @IsOptional()
