@@ -9,6 +9,9 @@ import { ReschedulingProcessor } from './rescheduling.processor';
     BullModule.registerQueue({
       name: 'rescheduling-queue',
     }),
+    BullModule.registerQueue({
+      name: 'notification-queue',
+    }),
   ],
   providers: [ReschedulingService, ReschedulingProcessor],
   exports: [ReschedulingService],

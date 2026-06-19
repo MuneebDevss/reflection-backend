@@ -6,7 +6,8 @@ import { AuthModule } from './auth/auth.module';
 import { TasksModule } from './tasks/tasks.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { BullModule } from '@nestjs/bullmq';
-
+import { ReschedulingModule } from './rescheduling/rescheduling.module';
+import { PushNotificationsModule } from './push-notifications/push-notifications.module';
 @Module({
   imports: [
     DateTimeModule,
@@ -22,6 +23,8 @@ import { BullModule } from '@nestjs/bullmq';
         // password: process.env.REDIS_PASSWORD, // Add if your Redis instance requires auth
       },
     }),
+    ReschedulingModule,
+    PushNotificationsModule,
   ],
 })
 export class AppModule {}

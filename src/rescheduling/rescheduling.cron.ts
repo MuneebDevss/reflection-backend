@@ -1,24 +1,44 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
-import { Queue } from 'bullmq';
+import { FlowProducer, Queue } from 'bullmq';
 import { InjectQueue } from '@nestjs/bullmq';
-
+import { Redis } from 'ioredis'; // BullMQ uses ioredis under the hood
 @Injectable()
 export class TaskCronJobService {
+  private flowProducer: FlowProducer;
   constructor
   (
     private readonly prismaService: PrismaService,
-    @InjectQueue('rescheduling') private readonly queue: Queue
-  ) {}
-  // Runs every minute
+    @Inject('BULLMQ_CONNECTION') private readonly redisConnection: Redis,
+  ) {
+    this.flowProducer = new FlowProducer({ 
+      connection: this.redisConnection 
+    });
+  }
+  
+
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handleCron() {
-    const userIds: string[] = await this.prismaService.user.findMany({ select: { id: true } }).
-    then(users => users.map(u => u.id));
-    for (const userId of userIds) {
-        await this.queue.add('reschedule', { userId: userId },
-      { attempts: 3, backoff: { type: 'exponential', delay: 5000 } });
-    }
+    const userIds = await this.prismaService.user.findMany({ select: { id: true } })
+      .then(users => users.map(u => u.id));
+
+    // 1. Creating child jobs (one per user for rescheduling)
+    const childrenJobs = userIds.map(userId => ({
+      name: 'reschedule',
+      queueName: 'reschedule-queue',
+      data: { userId },
+      opts: { attempts: 3, backoff: { type: 'exponential', delay: 5000 } }
+    }));
+
+    // 2. Creating the parent flow
+    // The 'notifications' job will sit in a 'parent-waiting' state 
+    // until EVERY SINGLE child job completes successfully.
+    await this.flowProducer.add({
+      name: 'send-batch-notifications',
+      queueName: 'notifications-queue',
+      data: { userIds }, // Passes the whole array to the notification worker!
+      children: childrenJobs,
+    });
   }
 }
