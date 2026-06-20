@@ -5,6 +5,7 @@ import {
   HttpException,
   HttpStatus,
   Logger,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { DateTimeService } from '../date-time/date-time.service';
@@ -35,6 +36,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
         message = (exceptionResponse as any).message || message;
         error = (exceptionResponse as any).error || error;
       }
+    }
+    else if (exception instanceof UnauthorizedException) {
+          const body = exception.getResponse() as any
+        if (body?.wwwAuthenticate) {
+      response.setHeader('WWW-Authenticate', body.wwwAuthenticate)
+    }
+    response.status(401).json({ error: 'unauthorized' })
     }
     else if (exception instanceof Prisma.PrismaClientKnownRequestError){
       // Switch through common Prisma Error Codes
