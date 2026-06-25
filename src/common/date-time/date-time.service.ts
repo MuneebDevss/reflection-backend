@@ -45,6 +45,12 @@ export class DateTimeService {
     return d;
   }
 
+  endOfDay(date: Date): Date {
+    const d = new Date(date);
+    d.setUTCHours(23, 59, 59, 999);
+    return d;
+  }
+
   /**
    * Returns the number of whole elapsed calendar days between two dates.
    * Operates on raw milliseconds (always UTC) so it is timezone-safe by nature.

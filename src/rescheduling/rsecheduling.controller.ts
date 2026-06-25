@@ -10,7 +10,7 @@ export class ReschedulingController {
   constructor(private readonly reschedulingService: ReschedulingService) {}
 
   @Post('run')
-    async runRescheduling(@GetUser('userId') userId: string, @Body() date: string) {
+    async runRescheduling(@GetUser('userId') userId: string, @Body('date') date: string) {
         const currentDate = new Date(date);
        return this.reschedulingService.rescheduleTasks(userId, currentDate);
     }

@@ -18,4 +18,10 @@ export class UsersController {
   updateOne(@GetUser('userId') userId: string, @Body() updateUserData: Partial<UpdateUserDto>) {
     return this.usersService.update(userId, updateUserData);
   }
+
+  @Get('me/mcp-status')
+  @UseGuards(JwtAuthGuard)
+  getMcpStatus(@GetUser('userId') userId: string) {
+    return this.usersService.getConnectionStatus(userId);
+  }
 }

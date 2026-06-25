@@ -9,7 +9,6 @@ datasource db {
   provider = "postgresql"
 }
 
-
 // ─────────────────────────────────────────
 // Enums
 // ─────────────────────────────────────────
@@ -42,40 +41,42 @@ enum PlanSource {
 // ─────────────────────────────────────────
 
 model User {
-  id                     String              @id @default(uuid()) @db.Uuid
-  email                  String              @unique
-  passwordHash           String
-  timezone               String              // IANA timezone, e.g. "America/New_York"
-  dailyCapacityMinutes   Int                 @default(480)
-  createdAt              DateTime            @default(now())
-  updatedAt              DateTime            @updatedAt
+  id                   String   @id @default(uuid()) @db.Uuid
+  email                String   @unique
+  passwordHash         String
+  timezone             String // IANA timezone, e.g. "America/New_York"
+  dailyCapacityMinutes Int      @default(480)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
-  tasks                  Task[]
-  planGroups             PlanGroup[]
-  mcpTokens              McpToken[]
-  pushSubscriptions      PushSubscription[]
+  tasks             Task[]
+  planGroups        PlanGroup[]
+  mcpTokens         McpToken[]
+  pushSubscriptions PushSubscription[]
+  oauthAuthCodes    OAuthAuthCode[]
+  oauthAccessTokens OAuthAccessToken[]
 
   @@map("users")
 }
 
 model Task {
-  id               String           @id @default(uuid()) @db.Uuid
-  userId           String           @db.Uuid
-  planId           String?          @db.Uuid
+  id               String       @id @default(uuid()) @db.Uuid
+  userId           String       @db.Uuid
+  planId           String?      @db.Uuid
   title            String
   description      String?
-  scheduledDate    DateTime         @db.Date
+  scheduledDate    DateTime     @db.Date
   estimatedMinutes Int
   basePriority     BasePriority
-  compositeScore   Float            @default(0)
-  bumpCount        Int              @default(0)
-  status           TaskStatus       @default(pending)
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  compositeScore   Float        @default(0)
+  bumpCount        Int          @default(0)
+  status           TaskStatus   @default(pending)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
 
-  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plan             PlanGroup?       @relation(fields: [planId], references: [id], onDelete: SetNull)
-  rescheduleLogs   RescheduleLog[]
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan           PlanGroup?      @relation(fields: [planId], references: [id], onDelete: SetNull)
+  rescheduleLogs RescheduleLog[]
 
   @@index([userId])
   @@index([planId])
@@ -93,8 +94,8 @@ model PlanGroup {
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 
-  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tasks           Task[]
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks Task[]
 
   @@index([userId])
   @@map("plan_groups")
@@ -108,21 +109,21 @@ model RescheduleLog {
   reason    RescheduleReason
   createdAt DateTime         @default(now())
 
-  task      Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@index([taskId])
   @@map("reschedule_log")
 }
 
 model McpToken {
-  id                 String   @id @default(uuid()) @db.Uuid
-  userId             String   @db.Uuid
-  accessTokenHash    String
-  refreshTokenHash   String
-  expiresAt          DateTime
-  createdAt          DateTime @default(now())
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @db.Uuid
+  accessTokenHash  String
+  refreshTokenHash String
+  expiresAt        DateTime
+  createdAt        DateTime @default(now())
 
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("mcp_tokens")
@@ -136,59 +137,59 @@ model PushSubscription {
   authKey   String
   createdAt DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("push_subscriptions")
 }
 
 model OAuthClient {
-  id                  String   @id @default(uuid())
-  clientId            String   @unique @map("client_id")
-  clientSecretHash    String?  @map("client_secret_hash") // null = public client (PKCE-only)
-  clientName          String?  @map("client_name")
-  redirectUris        String[] @map("redirect_uris")
-  grantTypes          String[] @map("grant_types")  // ["authorization_code", "refresh_token"]
-  scopes              String[] // ["tasks:read", "tasks:write"]
-  createdAt           DateTime @default(now()) @map("created_at")
+  id               String   @id @default(uuid())
+  clientId         String   @unique @map("client_id")
+  clientSecretHash String?  @map("client_secret_hash") // null = public client (PKCE-only)
+  clientName       String?  @map("client_name")
+  redirectUris     String[] @map("redirect_uris")
+  grantTypes       String[] @map("grant_types") // ["authorization_code", "refresh_token"]
+  scopes           String[] // ["tasks:read", "tasks:write"]
+  createdAt        DateTime @default(now()) @map("created_at")
 
-  authCodes     OAuthAuthCode[]
-  accessTokens  OAuthAccessToken[]
+  authCodes    OAuthAuthCode[]
+  accessTokens OAuthAccessToken[]
 
   @@map("oauth_clients")
 }
 
 model OAuthAuthCode {
-  id            String      @id @default(uuid())
-  code          String      @unique
-  clientId      String      @map("client_id")
-  userId        String      @map("user_id")
-  redirectUri   String      @map("redirect_uri")
+  id            String   @id @default(uuid())
+  code          String   @unique
+  clientId      String   @map("client_id")
+  userId        String   @map("user_id")
+  redirectUri   String   @map("redirect_uri")
   scopes        String[]
-  codeChallenge String      @map("code_challenge")    // PKCE — S256 hash
-  expiresAt     DateTime    @map("expires_at")
-  used          Boolean     @default(false)
-  createdAt     DateTime    @default(now()) @map("created_at")
+  codeChallenge String   @map("code_challenge") // PKCE — S256 hash
+  expiresAt     DateTime @map("expires_at")
+  used          Boolean  @default(false)
+  createdAt     DateTime @default(now()) @map("created_at")
 
-  client  OAuthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
-  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client OAuthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("oauth_auth_codes")
 }
 
 model OAuthAccessToken {
-  id            String      @id @default(uuid())
-  tokenHash     String      @unique @map("token_hash")
-  refreshHash   String?     @unique @map("refresh_hash")
-  clientId      String      @map("client_id")
-  userId        String      @map("user_id")
-  scopes        String[]
-  expiresAt     DateTime    @map("expires_at")
+  id               String    @id @default(uuid())
+  tokenHash        String    @unique @map("token_hash")
+  refreshHash      String?   @unique @map("refresh_hash")
+  clientId         String    @map("client_id")
+  userId           String    @map("user_id")
+  scopes           String[]
+  expiresAt        DateTime  @map("expires_at")
   refreshExpiresAt DateTime? @map("refresh_expires_at")
-  createdAt     DateTime    @default(now()) @map("created_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
 
-  client  OAuthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
-  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client OAuthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("oauth_access_tokens")
 }

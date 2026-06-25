@@ -8,6 +8,9 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { BullModule } from '@nestjs/bullmq';
 import { ReschedulingModule } from './rescheduling/rescheduling.module';
 import { PushNotificationsModule } from './push-notifications/push-notifications.module';
+import { OAuthModule } from './OAuth/oauth.module';
+import { McpModule } from './mcp/mcp.module';
+import { PlansModule } from './plans/plans.module';
 @Module({
   imports: [
     DateTimeModule,
@@ -15,6 +18,8 @@ import { PushNotificationsModule } from './push-notifications/push-notifications
     UsersModule,
     AuthModule,  // Add AuthModule for JWT authentication
     TasksModule,
+    PlansModule,
+    ReschedulingModule,
     ScheduleModule.forRoot(), // Enables scheduling globally
     BullModule.forRoot({
       connection: {
@@ -25,6 +30,8 @@ import { PushNotificationsModule } from './push-notifications/push-notifications
     }),
     ReschedulingModule,
     PushNotificationsModule,
+    OAuthModule, // discovery + authorize + token endpoints
+    McpModule,   // mounts /mcp inside this same app — see mcp.module.ts
   ],
 })
 export class AppModule {}

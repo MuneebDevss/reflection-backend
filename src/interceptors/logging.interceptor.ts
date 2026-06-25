@@ -9,6 +9,11 @@ import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { DateTimeService } from '../common/date-time/date-time.service';
 
+/**
+ * LoggingInterceptor
+ * Intercepts incoming HTTP requests and logs the method, URL, request body, response status, and execution time.
+ * Apply this interceptor globally or to specific controllers/routes to enable logging.
+ */
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
   private readonly logger = new Logger('HTTP');

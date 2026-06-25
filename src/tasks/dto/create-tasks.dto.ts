@@ -33,4 +33,7 @@ export class CreateTaskDto {
     @IsEnum(BasePriority, {message: 'Base priority must be one of low, medium, or high'})
     basePriority?: BasePriority;
 
+    @IsOptional()
+    @IsString({message: 'Plan ID must be a string'})
+    planId?: string;
 }

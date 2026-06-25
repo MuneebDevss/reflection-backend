@@ -38,6 +38,25 @@ async function bootstrap() {
       },
     }));
 
+     /**
+     * CRITICAL: if you set a global API prefix (e.g. '/api' for your REST
+     * routes), you MUST exclude the MCP and OAuth discovery paths. Claude
+     * hits these at fixed, well-known paths — '/mcp', '/.well-known/...',
+     * '/oauth/authorize', '/oauth/token' — with no prefix awareness. Forgetting
+     * this exclusion is the single most common reason "OAuth works in curl but
+     * Claude can't connect" — the discovery request just 404s silently.
+     */
+    app.setGlobalPrefix('api', {
+      exclude: [
+        'mcp',
+        'oauth/authorize',
+        'oauth/token',
+        'oauth/register',
+        '.well-known/oauth-authorization-server',
+        '.well-known/oauth-protected-resource',
+      ],
+    });
+    
     const port = process.env.PORT || 3001;
     await app.listen(port, '0.0.0.0');
     logger.log(`🚀 Server running on http://localhost:${port}`);

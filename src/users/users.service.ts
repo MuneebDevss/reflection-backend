@@ -29,7 +29,20 @@ export class UsersService {
     }
   }
 
-  
+  async getConnectionStatus(userId: string) {
+      const token = await this.prisma.oAuthAccessToken.findFirst({
+        where: { userId, refreshExpiresAt: { gt: new Date() } },
+        orderBy: { createdAt: 'desc' },
+        include: { client: true },
+      })
+      if (!token) return { connected: false, connectedAt: null, expiresAt: null, clientName: null }
+      return {
+        connected: true,
+        connectedAt: token.createdAt.toISOString(),
+        expiresAt: token.refreshExpiresAt.toISOString(),
+        clientName: token.client.clientName,
+      }
+    }
 
   async findOne(id: string) {
     try {
