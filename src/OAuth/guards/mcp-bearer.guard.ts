@@ -40,16 +40,17 @@ export class McpBearerGuard implements CanActivate {
   constructor(private readonly oauth: OAuthService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const req = context.switchToHttp().getRequest();
-    const authHeader: string | undefined = req.headers['authorization'];
+  const req = context.switchToHttp().getRequest();
+  const res = context.switchToHttp().getResponse();
+  const authHeader: string | undefined = req.headers['authorization'];
 
-    if (!authHeader?.startsWith('Bearer ')) {
-      throw new UnauthorizedException({
-        statusCode: 401,
-        message: 'Unauthorized',
-        wwwAuthenticate: `Bearer resource_metadata="${process.env.APP_URL}/.well-known/oauth-protected-resource"`,
-      });
-    }
+  if (!authHeader?.startsWith('Bearer ')) {
+    res.setHeader(
+      'WWW-Authenticate',
+      `Bearer resource_metadata="${process.env.APP_URL}/.well-known/oauth-protected-resource"`
+    );
+    throw new UnauthorizedException('Unauthorized');
+  }
 
     const token = authHeader.slice('Bearer '.length);
     const { userId, scopes } = await this.oauth.validateToken(token);

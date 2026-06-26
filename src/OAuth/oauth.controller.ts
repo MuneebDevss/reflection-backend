@@ -28,7 +28,7 @@ export class OAuthController {
     const base = process.env.APP_URL // e.g. https://api.stratostodo.com
     return {
       resource: base,
-      authorization_servers: [`${base}`],
+      authorization_servers: [`${base}/.well-known/oauth-authorization-server`],
     }
   }
 

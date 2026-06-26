@@ -24,9 +24,24 @@ async function bootstrap() {
     
     // Enable CORS for frontend
     app.enableCors({
-      origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: (origin, callback) => {
+    const allowedOrigins = [
+      process.env.FRONTEND_URL,        // your Next.js frontend
+      'https://claude.ai',
+      'https://api.claude.ai',
+    ];
+    
+    // Allow requests with no origin (mobile apps, curl, server-to-server)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+      },
+      methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Authorization', 'Content-Type', 'mcp-session-id'],
       credentials: true,
-    });
+    });;
     
     // Enable validation globally with detailed error messages
     app.useGlobalPipes(new ValidationPipe({
