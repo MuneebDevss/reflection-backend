@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
 import { McpModule as RekogMcpModule, McpTransportType } from '@rekog/mcp-nest';
-import { OAuthModule } from '../oauth/oauth.module';
+import { OAuthModule } from '../OAuth/oauth.module';
 import { TasksMcpTools } from './tools/tasks.mcp-tools';
 import { PlansMcpTools } from './tools/plans.mcp-tools';
 import { ScheduleMcpTools } from './tools/schedule.mcp-tools';
 import { TasksModule } from '../tasks/tasks.module';
 import { PlansModule } from '../plans/plans.module';
-import { McpBearerGuard } from '../oauth/guards/mcp-bearer.guard'; // moved — see OAuthModule
+import { McpBearerGuard } from '../OAuth/guards/mcp-bearer.guard'; // moved — see OAuthModule
 /**
  * McpModule
  * ─────────

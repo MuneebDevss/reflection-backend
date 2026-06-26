@@ -1,10 +1,16 @@
 import {
   Controller, Get, Post, Req, Res, Query, Body,
-  HttpCode, HttpStatus, BadRequestException,
+  HttpCode, HttpStatus, BadRequestException, UseGuards,
 } from '@nestjs/common'
 import { Request, Response } from 'express'
 import { OAuthService } from './oauth.service'
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard'
 import 'dotenv/config'
+
+interface AuthenticatedUser {
+  userId: string
+  email: string
+}
 
 @Controller()
 export class OAuthController {
@@ -66,6 +72,7 @@ export class OAuthController {
   // ─────────────────────────────────────────────────────────────────────────
 
   @Get('oauth/authorize')
+  @UseGuards(OptionalJwtAuthGuard)
   async authorize(
     @Query('client_id') clientId: string,
     @Query('redirect_uri') redirectUri: string,
@@ -84,22 +91,18 @@ export class OAuthController {
       throw new BadRequestException('S256 required')
     }
 
-    // If user is not logged in to StratosToDo, send them to login first,
-    // then redirect back here after. Store the OAuth params in the session.
-    const user = (req as any).user  // set by your existing JWT/session middleware
+    const user = req.user as AuthenticatedUser | undefined
 
     if (!user) {
-      // Preserve full authorize URL in session, redirect to login
       const returnTo = encodeURIComponent(req.url)
-      return res.redirect(`/login?returnTo=${returnTo}`)
+      const frontend = process.env.FRONTEND_URL ?? 'http://localhost:5173'
+      return res.redirect(`${frontend}/login?returnTo=${returnTo}`)
     }
 
-    // Render consent page (see Step 6 below)
-    // For V1 you can auto-approve if the user is already authenticated
     const scopes = (scope ?? 'tasks:read tasks:write').split(' ')
     const code = await this.oauth.createAuthCode({
       clientId,
-      userId: user.id,
+      userId: user.userId,
       redirectUri,
       scopes,
       codeChallenge,

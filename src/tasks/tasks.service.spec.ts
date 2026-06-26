@@ -48,7 +48,7 @@ describe('TasksService', () => {
       
       mockPrismaService.task.findMany.mockResolvedValue(expectedTasks);
 
-      const result = await service.getTasks(userId);
+      const result = await service.getTasks(userId,{});
 
       expect(prisma.task.findMany).toHaveBeenCalledWith({
         where: { userId },

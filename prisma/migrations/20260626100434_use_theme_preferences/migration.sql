@@ -44,7 +44,7 @@ CREATE TABLE "oauth_access_tokens" (
     "scopes" TEXT[],
     "expires_at" TIMESTAMP(3) NOT NULL,
     "refresh_expires_at" TIMESTAMP(3),
-    "created_at" TIMESTAMP(3) NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "oauth_access_tokens_pkey" PRIMARY KEY ("id")
 );

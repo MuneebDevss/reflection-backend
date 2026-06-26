@@ -192,7 +192,7 @@ model OAuthAccessToken {
   scopes           String[]
   expiresAt        DateTime  @map("expires_at")
   refreshExpiresAt DateTime? @map("refresh_expires_at")
-  createdAt        DateTime  @map("created_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
 
   client OAuthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
   user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)

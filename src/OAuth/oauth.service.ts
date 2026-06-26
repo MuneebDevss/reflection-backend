@@ -56,12 +56,12 @@ export class OAuthService {
     await this.prisma.oAuthAuthCode.create({
       data: {
         code,
-        clientId: params.clientId,
-        userId: params.userId,
         redirectUri: params.redirectUri,
         scopes: params.scopes,
         codeChallenge: params.codeChallenge,
         expiresAt: addSeconds(new Date(), 600), // 10 min
+        client: { connect: { clientId: params.clientId } },
+        user: { connect: { id: params.userId } },
       },
     })
     return code
@@ -97,34 +97,37 @@ export class OAuthService {
   }
 
   try {
-    // Consume code atomically up front to neutralize replay attacks
-    const record = await this.prisma.oAuthAuthCode.update({
-      where: { 
-        code: body.code,
-        used: false 
-      },
-      data: { used: true },
+    const record = await this.prisma.oAuthAuthCode.findUnique({
+      where: { code: body.code },
     });
 
-    // Check expiration window
+    if (!record || record.used) {
+      throw new UnauthorizedException('invalid_grant');
+    }
+
     if (isBefore(record.expiresAt, new Date())) {
       throw new UnauthorizedException('invalid_grant');
     }
 
-    // Verify context match properties
     if (record.clientId !== body.client_id || record.redirectUri !== body.redirect_uri) {
       throw new UnauthorizedException('invalid_grant');
     }
 
-    // Evaluate PKCE signature challenge
     if (!verifyPkce(body.code_verifier, record.codeChallenge)) {
       throw new UnauthorizedException('invalid_grant');
     }
 
+    await this.prisma.oAuthAuthCode.update({
+      where: { code: body.code },
+      data: { used: true },
+    });
+
     return this.issueTokens(record.clientId, record.userId, record.scopes);
 
   } catch (error) {
-    // Catch Prisma record update failures gracefully
+    if (error instanceof UnauthorizedException) {
+      throw error;
+    }
     throw new UnauthorizedException('invalid_grant');
   }
 }
@@ -152,11 +155,11 @@ export class OAuthService {
       data: {
         tokenHash: sha256(accessToken),
         refreshHash: sha256(refreshToken),
-        clientId,
-        userId,
         scopes,
         expiresAt: addSeconds(new Date(), 3600),        // 1 hour
         refreshExpiresAt: addDays(new Date(), 30),      // 30 days
+        client: { connect: { clientId } },
+        user: { connect: { id: userId } },
       },
     })
 
