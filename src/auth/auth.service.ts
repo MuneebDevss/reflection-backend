@@ -43,6 +43,7 @@ export class AuthService {
       const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
       
       if (!isPasswordValid) {
+        console.log(`Password mismatch for user ${email}`);
         return null;
       }
 

@@ -107,6 +107,7 @@ export class UsersService {
         data: {
           dailyCapacityMinutes: updateUserData.dailyCapacityMinutes,
           timezone: updateUserData.timezone,
+          theme: updateUserData.theme,
         },
       });
     }

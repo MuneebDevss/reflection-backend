@@ -17,6 +17,8 @@ export class TasksService {
    * @returns Array of task objects
    */
   async getTasks(userId: string, query: GetTasks): Promise<Task[]> {
+  query.startDate?.setUTCHours(0, 0, 0, 0);
+  query.endDate?.setUTCHours(23, 59, 59, 999);
   return this.prisma.task.findMany({
     where: {
       userId,
@@ -105,7 +107,7 @@ export class TasksService {
    */
   async getOverdueTasks(userId: string): Promise<Task[]> {
     const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    todayStart.setUTCHours(0, 0, 0, 0);
 
     return this.prisma.task.findMany({
       where: {
@@ -141,14 +143,14 @@ export class TasksService {
   const { startDate, endDate, includeCapacity } = dto;
 
   // Normalize date bounds and fetch tasks in parallel with optional user lookup
-  startDate.setHours(0, 0, 0, 0);
-  endDate.setHours(23, 59, 59, 999);
-
+  
+  const startDateUTC = this.dateTimeService.startOfDay(startDate);
+  const endDateUTC = this.dateTimeService.endOfDay(endDate);
   const [tasks, user] = await Promise.all([
     this.prisma.task.findMany({
       where: {
         userId,
-        scheduledDate: { gte: startDate, lte: endDate },
+        scheduledDate: { gte: startDateUTC, lte: endDateUTC },
         status: { in: [TaskStatus.pending, TaskStatus.completed] },
       },
     }),

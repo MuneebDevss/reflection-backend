@@ -13,6 +13,11 @@ datasource db {
 // Enums
 // ─────────────────────────────────────────
 
+enum Theme {
+  light
+  dark
+}
+
 enum BasePriority {
   low
   medium
@@ -41,13 +46,14 @@ enum PlanSource {
 // ─────────────────────────────────────────
 
 model User {
-  id                   String   @id @default(uuid()) @db.Uuid
-  email                String   @unique
+  id                   String             @id @default(uuid()) @db.Uuid
+  email                String             @unique
   passwordHash         String
-  timezone             String // IANA timezone, e.g. "America/New_York"
-  dailyCapacityMinutes Int      @default(480)
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  timezone             String             // IANA timezone, e.g. "America/New_York"
+  dailyCapacityMinutes Int                @default(480)
+  theme                Theme              @default(light)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
 
   tasks             Task[]
   planGroups        PlanGroup[]
@@ -60,22 +66,22 @@ model User {
 }
 
 model Task {
-  id               String       @id @default(uuid()) @db.Uuid
-  userId           String       @db.Uuid
-  planId           String?      @db.Uuid
+  id               String           @id @default(uuid()) @db.Uuid
+  userId           String           @db.Uuid
+  planId           String?          @db.Uuid
   title            String
   description      String?
-  scheduledDate    DateTime     @db.Date
+  scheduledDate    DateTime         @db.Date
   estimatedMinutes Int
   basePriority     BasePriority
-  compositeScore   Float        @default(0)
-  bumpCount        Int          @default(0)
-  status           TaskStatus   @default(pending)
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  compositeScore   Float            @default(0)
+  bumpCount        Int              @default(0)
+  status           TaskStatus       @default(pending)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
-  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plan           PlanGroup?      @relation(fields: [planId], references: [id], onDelete: SetNull)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan           PlanGroup?     @relation(fields: [planId], references: [id], onDelete: SetNull)
   rescheduleLogs RescheduleLog[]
 
   @@index([userId])
@@ -144,13 +150,13 @@ model PushSubscription {
 }
 
 model OAuthClient {
-  id               String   @id @default(uuid())
-  clientId         String   @unique @map("client_id")
-  clientSecretHash String?  @map("client_secret_hash") // null = public client (PKCE-only)
+  id               String   @id @default(uuid()) @db.Uuid // FIXED: Aligned base ID type to native UUID
+  clientId         String   @unique @map("client_id")    // This tracks as Text type in Postgres
+  clientSecretHash String?  @map("client_secret_hash")
   clientName       String?  @map("client_name")
   redirectUris     String[] @map("redirect_uris")
-  grantTypes       String[] @map("grant_types") // ["authorization_code", "refresh_token"]
-  scopes           String[] // ["tasks:read", "tasks:write"]
+  grantTypes       String[] @map("grant_types")
+  scopes           String[]
   createdAt        DateTime @default(now()) @map("created_at")
 
   authCodes    OAuthAuthCode[]
@@ -162,11 +168,11 @@ model OAuthClient {
 model OAuthAuthCode {
   id            String   @id @default(uuid())
   code          String   @unique
-  clientId      String   @map("client_id")
-  userId        String   @map("user_id")
+  clientId      String   @map("client_id")           // FIXED: Removed @db.Uuid to match text field in OAuthClient
+  userId        String   @map("user_id") @db.Uuid    // FIXED: Added @db.Uuid to match User.id type
   redirectUri   String   @map("redirect_uri")
   scopes        String[]
-  codeChallenge String   @map("code_challenge") // PKCE — S256 hash
+  codeChallenge String   @map("code_challenge")
   expiresAt     DateTime @map("expires_at")
   used          Boolean  @default(false)
   createdAt     DateTime @default(now()) @map("created_at")
@@ -181,12 +187,12 @@ model OAuthAccessToken {
   id               String    @id @default(uuid())
   tokenHash        String    @unique @map("token_hash")
   refreshHash      String?   @unique @map("refresh_hash")
-  clientId         String    @map("client_id")
-  userId           String    @map("user_id")
+  clientId         String    @map("client_id")          // Stays plain text to match OAuthClient.clientId
+  userId           String    @map("user_id") @db.Uuid   // Correctly configured as @db.Uuid
   scopes           String[]
   expiresAt        DateTime  @map("expires_at")
   refreshExpiresAt DateTime? @map("refresh_expires_at")
-  createdAt        DateTime  @default(now()) @map("created_at")
+  createdAt        DateTime  @map("created_at")
 
   client OAuthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
   user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)

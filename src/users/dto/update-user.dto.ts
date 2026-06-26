@@ -1,4 +1,4 @@
-import { IsOptional, IsNumber, IsString, Min, Max } from 'class-validator';
+import { IsOptional, IsNumber, IsString, Min, Max, IsEnum } from 'class-validator';
 export class UpdateUserDto {
   @IsOptional()
   @IsNumber({})
@@ -9,6 +9,10 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString({message: "Timezone must be a string"})
   timezone?: string;
+
+  @IsOptional()
+  @IsEnum(['light', 'dark'], {message: "Theme must be either 'light' or 'dark'"})
+  theme?: 'light' | 'dark';
 
 }
   
