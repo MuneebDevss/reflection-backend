@@ -45,12 +45,13 @@ export class TasksService {
    * @returns The newly created task object
    */
   async createTask(userId: string, data: CreateTaskDto): Promise<Task> {
+    const startofDay = this.dateTimeService.startOfDay(data.scheduleDate);
     return this.prisma.task.create({
       data: {
         userId,
         title: data.title,
         description: data.description,
-        scheduledDate: data.scheduleDate,
+        scheduledDate: startofDay,
         estimatedMinutes: data.estimatedMinutes ?? 0,
         basePriority: data.basePriority ?? BasePriority.medium, // Prisma enums default to uppercase
         planId: data.planId,
@@ -186,9 +187,10 @@ export class TasksService {
   * @returns Array of daily summaries with date, total scheduled minutes, and capacity
   */
   async getCapacitySummary(userId: string, { startDate, endDate }: { startDate: Date; endDate: Date }) {
+    
     // Normalize date bounds
-    startDate.setHours(0, 0, 0, 0);
-    endDate.setHours(23, 59, 59, 999);
+    const start = this.dateTimeService.startOfDay(startDate);
+    const end = this.dateTimeService.endOfDay(endDate);
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { dailyCapacityMinutes: true },
@@ -201,7 +203,7 @@ export class TasksService {
     const tasks = await this.prisma.task.findMany({
       where: {
         userId,
-        scheduledDate: { gte: startDate, lte: endDate },
+        scheduledDate: { gte: start, lte: end },
         status: { in: [TaskStatus.pending, TaskStatus.completed] },
       },
     });
