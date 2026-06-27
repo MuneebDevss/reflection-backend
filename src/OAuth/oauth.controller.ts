@@ -22,13 +22,14 @@ export class OAuthController {
   // RFC 9728 — Protected Resource Metadata
   // Claude fetches this FIRST when it gets a 401 from your MCP endpoint.
   // ─────────────────────────────────────────────────────────────────────────
-
-  @Get('.well-known/oauth-protected-resource')
+  // What claude.ai fetches at step 2 of the handshake:
+  @Get('.well-known/oauth-protected-resource/mcp')  // /mcp suffix add karo
   protectedResourceMetadata() {
-    const base = process.env.APP_URL // e.g. https://api.stratostodo.com
+    const base = process.env.APP_URL
     return {
-      resource: base,
-      authorization_servers: [`${base}/.well-known/oauth-authorization-server`],
+      resource: `${base}/mcp`,
+      authorization_servers: [`${base}`],          
+      bearer_methods_supported: ['header'],
     }
   }
 
@@ -48,7 +49,7 @@ export class OAuthController {
       scopes_supported: ['tasks:read', 'tasks:write'],
       response_types_supported: ['code'],
       grant_types_supported: ['authorization_code', 'refresh_token'],
-      token_endpoint_auth_methods_supported: ['none'],        // public clients only
+      token_endpoint_auth_methods_supported: ['client_secret_post'],
       code_challenge_methods_supported: ['S256'],             // REQUIRED by Claude
       service_documentation: `${base}/docs`,
     }

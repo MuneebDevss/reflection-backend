@@ -47,7 +47,7 @@ export class McpBearerGuard implements CanActivate {
   if (!authHeader?.startsWith('Bearer ')) {
     res.setHeader(
       'WWW-Authenticate',
-      `Bearer resource_metadata="${process.env.APP_URL}/.well-known/oauth-protected-resource"`
+      `Bearer resource_metadata="${process.env.APP_URL}/.well-known/oauth-protected-resource/mcp"`
     );
     throw new UnauthorizedException('Unauthorized');
   }

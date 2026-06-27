@@ -1,8 +1,10 @@
-import { Module } from '@nestjs/common'
+import { Global, Module } from '@nestjs/common'
 import { OAuthController } from './oauth.controller'
 import { OAuthService } from './oauth.service'
 import { PrismaModule } from '../prisma/prisma.module'
 import { McpBearerGuard } from './guards/mcp-bearer.guard'
+
+@Global()
 @Module({
   imports: [PrismaModule],
   controllers: [OAuthController],

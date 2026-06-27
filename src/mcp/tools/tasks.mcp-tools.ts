@@ -24,6 +24,9 @@ export class TasksMcpTools {
   constructor(private readonly tasksService: TasksService) {}
 
   @Tool({
+    annotations: {
+      title: 'Create Task',
+    },
     name: 'create_task',
     description: 'Create a single task for the authenticated user.',
     parameters: z.object({

@@ -17,10 +17,13 @@ export class OAuthService {
     scope?: string
   }) {
     const clientId = generateToken(16)
+    const clientSecret = generateToken(32)
+    console.log(`Registering new OAuth client: ${clientId} with redirect URIs: ${body.redirect_uris.join(', ')}`)
     // Public client — no secret needed when PKCE is enforced
     await this.prisma.oAuthClient.create({
       data: {
         clientId,
+        clientSecretHash: sha256(clientSecret),  // store hash only
         clientName: body.client_name ?? 'Unknown client',
         redirectUris: body.redirect_uris,
         grantTypes: body.grant_types ?? ['authorization_code', 'refresh_token'],
@@ -30,9 +33,10 @@ export class OAuthService {
     return {
       client_id: clientId,
       client_id_issued_at: Math.floor(Date.now() / 1000),
+      client_secret: clientSecret,  // return it
       redirect_uris: body.redirect_uris,
       grant_types: body.grant_types ?? ['authorization_code', 'refresh_token'],
-      token_endpoint_auth_method: 'none', // public client
+      token_endpoint_auth_method: 'client_secret_post',
     }
   }
 

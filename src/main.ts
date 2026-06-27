@@ -38,7 +38,7 @@ async function bootstrap() {
       callback(new Error('Not allowed by CORS'));
     }
       },
-      methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+      methods: ['GET', 'POST', 'DELETE','PATCH', 'OPTIONS'],
       allowedHeaders: ['Authorization', 'Content-Type', 'mcp-session-id'],
       credentials: true,
     });;
@@ -64,14 +64,10 @@ async function bootstrap() {
     app.setGlobalPrefix('api', {
       exclude: [
         'mcp',
-        'oauth/authorize',
-        'oauth/token',
-        'oauth/register',
-        '.well-known/oauth-authorization-server',
-        '.well-known/oauth-protected-resource',
+        'oauth/(.*)', 
+        '.well-known/(.*)'
       ],
     });
-    
     const port = process.env.PORT || 3001;
     await app.listen(port, '0.0.0.0');
     logger.log(`🚀 Server running on http://localhost:${port}`);

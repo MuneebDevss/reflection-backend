@@ -43,26 +43,23 @@ import { McpBearerGuard } from '../OAuth/guards/mcp-bearer.guard'; // moved — 
     TasksModule, // exports TasksService, injected into TasksMcpTools
     PlansModule, // exports PlansService, injected into PlansMcpTools
 
-    RekogMcpModule.forRootAsync({
-      imports: [OAuthModule],
-      useFactory: () => ({
-        name: 'stratostodo-mcp',
-        version: '1.0.0',
-        instructions:
-          'StratosToDo task manager. Use get_user_schedule before bulk_create_tasks ' +
-          'to understand existing commitments and free capacity. All tools are scoped ' +
-          'to the authenticated user automatically — never ask the user for their user ID.',
-        
-        transport: McpTransportType.STREAMABLE_HTTP,
-        mcpEndpoint: 'mcp',
-        
-        streamableHttp: {
-          enableJsonResponse: true,
-          statelessMode: true,
-        },
-        
-        guards: [McpBearerGuard],
-      }),
+    RekogMcpModule.forRoot({
+      name: 'stratostodo-mcp',
+      version: '1.0.0',
+      instructions:
+        'StratosToDo task manager. Use get_user_schedule before bulk_create_tasks ' +
+        'to understand existing commitments and free capacity. All tools are scoped ' +
+        'to the authenticated user automatically — never ask the user for their user ID.',
+
+      transport: McpTransportType.STREAMABLE_HTTP,
+      mcpEndpoint: 'mcp',
+
+      streamableHttp: {
+        enableJsonResponse: true,
+        statelessMode: true,
+      },
+
+      guards: [McpBearerGuard],
     }),
   ],
   providers: [
