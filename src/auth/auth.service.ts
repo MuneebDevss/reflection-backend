@@ -120,20 +120,22 @@ export class AuthService {
       secret: process.env.JWT_REFRESH_SECRET || 'rt-secret', // Distinct secret for refresh tokens
       expiresIn: '7d',                       // Expires in 7 days
     });
+    const isProd = process.env.NODE_ENV === 'production';
 
-    // 1. Attach the Access Token as an httpOnly cookie
     res.cookie('access_token', accessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // true in production (HTTPS)
-      sameSite: 'none', // Adjust based on your frontend domain and CORS settings
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
       maxAge: 15 * 60 * 1000, // 15 minutes
     });
+    // 1. Attach the Access Token as an httpOnly cookie
+    
 
     // 2. Attach the Refresh Token as a separate httpOnly cookie
     res.cookie('refresh_token', refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'none',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
   }
