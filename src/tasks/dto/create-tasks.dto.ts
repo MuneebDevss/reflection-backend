@@ -6,16 +6,21 @@ import {
     IsInt, 
     Min, 
     Max, 
+    MaxLength,
     IsEnum} from 'class-validator';
 import { BasePriority } from '@prisma/client';
 import { Type } from 'class-transformer';
+//Max title length is 255 characters, description is 1000 characters
 export class CreateTaskDto {
+    
     @IsNotEmpty()
     @IsString({message: 'Title must be a string'})
+    @MaxLength(255, {message: 'Title cannot be longer than 255 characters'})
     title: string;
 
     @IsOptional()
     @IsString({message: 'Description must be a string'})
+    @MaxLength(1000, {message: 'Description cannot be longer than 1000 characters'})
     description?: string;
 
     @IsOptional()
