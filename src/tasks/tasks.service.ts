@@ -301,4 +301,21 @@ async bulkShiftTasks(
     newDate: targetDateOfDay,
   };
 }
+/**
+ * bulk creation of tasks
+ * @param CreateTaskDto[] - Array of task creation payloads
+ * @returns return Count of tasks created
+ */
+async bulkCreateTasks(userId: string, tasksData: CreateTaskDto[]): Promise<{ count: number }> {
+  const tasksToCreate = tasksData.map(task => ({
+    userId,
+    title: task.title,
+    description: task.description,
+    scheduledDate: this.dateTimeService.startOfDay(task.scheduleDate),
+    estimatedMinutes: task.estimatedMinutes ?? 0,
+    basePriority: task.basePriority ?? BasePriority.medium,
+    planId: task.planId,
+  }));
+  return this.prisma.task.createMany({ data: tasksToCreate });
+}
 }
