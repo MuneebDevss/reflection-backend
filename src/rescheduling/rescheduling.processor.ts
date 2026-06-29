@@ -1,7 +1,8 @@
 import { ReschedulingService } from "./rescheduling.service";
 import { Processor, WorkerHost } from "@nestjs/bullmq";
-import { Logger } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { Job } from "bullmq";
+@Injectable()
 @Processor('rescheduling', { concurrency: 5 })
 export class ReschedulingProcessor extends WorkerHost  {
 private readonly logger = new Logger(ReschedulingProcessor.name);

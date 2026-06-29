@@ -108,14 +108,16 @@ export class AuthController {
     const isProd = process.env.NODE_ENV === 'production';
     res.clearCookie('access_token', {
       httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? 'none' : 'lax',
+      secure: true,
+      sameSite: 'none' as 'none', // 🔥 Force type-casting to ensure Express reads it perfectly
+      partitioned: true,
     });
     // Clear the refresh_token cookie
     res.clearCookie('refresh_token', {
       httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? 'none' : 'lax',
+      secure: true,
+      sameSite: 'none' as 'none', // 🔥 Force type-casting to ensure Express reads it perfectly
+      partitioned: true,
     });
     return { success: true, message: 'Logged out successfully' };
   }

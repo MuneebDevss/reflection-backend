@@ -124,19 +124,18 @@ export class AuthService {
 
     res.cookie('access_token', accessToken, {
       httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? 'none' : 'lax',
-      maxAge: 15 * 60 * 1000, // 15 minutes
+      secure: true,
+      sameSite: 'none' as 'none', // 🔥 Force type-casting to ensure Express reads it perfectly
+      partitioned: true,
+      maxAge: 15 * 60 * 1000,
     });
-    // 1. Attach the Access Token as an httpOnly cookie
-    
 
-    // 2. Attach the Refresh Token as a separate httpOnly cookie
     res.cookie('refresh_token', refreshToken, {
       httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? 'none' : 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      secure: true,
+      sameSite: 'none' as 'none', // 🔥 Force type-casting to ensure Express reads it perfectly
+      partitioned: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
   }
   

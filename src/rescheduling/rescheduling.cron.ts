@@ -8,7 +8,7 @@ export class TaskCronJobService {
   constructor
   (
     private readonly prismaService: PrismaService,
-    @Inject('BULLMQ_CONNECTION') private readonly redisConnection: Redis,
+    @Inject('REDIS_CONNECTION') private readonly redisConnection: Redis,
   ) {
     this.flowProducer = new FlowProducer({ 
       connection: this.redisConnection 

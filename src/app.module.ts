@@ -13,13 +13,6 @@ import { McpModule } from './mcp/mcp.module';
 import { PlansModule } from './plans/plans.module';
 @Module({
   imports: [
-    DateTimeModule,
-    PrismaModule,
-    UsersModule,
-    AuthModule,  // Add AuthModule for JWT authentication
-    TasksModule,
-    PlansModule,
-    ReschedulingModule,
     ScheduleModule.forRoot(), // Enables scheduling globally
     BullModule.forRoot({
       connection: {
@@ -29,6 +22,12 @@ import { PlansModule } from './plans/plans.module';
         password: process.env.REDIS_PASSWORD,
       },
     }),
+    DateTimeModule,
+    PrismaModule,
+    UsersModule,
+    AuthModule,  // Add AuthModule for JWT authentication
+    TasksModule,
+    PlansModule,
     ReschedulingModule,
     PushNotificationsModule,
     OAuthModule, // discovery + authorize + token endpoints
