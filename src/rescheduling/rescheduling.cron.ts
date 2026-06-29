@@ -1,8 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { FlowProducer, Queue } from 'bullmq';
-import { InjectQueue } from '@nestjs/bullmq';
 import { Redis } from 'ioredis'; // BullMQ uses ioredis under the hood
 @Injectable()
 export class TaskCronJobService {
@@ -18,7 +16,6 @@ export class TaskCronJobService {
   }
   
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handleCron() {
     const userIds = await this.prismaService.user.findMany({ select: { id: true } })
       .then(users => users.map(u => u.id));
