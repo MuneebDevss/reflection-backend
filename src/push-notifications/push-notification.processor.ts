@@ -1,6 +1,8 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { PushNotificationsService } from './push-notifications.service';
+import { Injectable } from '@nestjs/common';
+@Injectable()
 @Processor('notification-queue')
 export class PushNotificationProcessor extends WorkerHost {
     constructor(

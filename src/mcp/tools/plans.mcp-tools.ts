@@ -221,7 +221,7 @@ export class PlansMcpTools {
       const userId = getUserId({ request, ...context });
       const count = await this.taskService.bulkCreateTasks(userId, input.tasks);
       return {
-        content: [{ type: 'text', text: `Successfully created ${count} tasks.` }],
+        content: [{ type: 'text', text: `Successfully created ${count.count} tasks.` }],
       };
     } catch (error: any) {
       return handleError(error, 'creating and adding tasks to plan');

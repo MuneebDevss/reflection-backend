@@ -1,16 +1,20 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Tool, Context } from '@rekog/mcp-nest';
-import { z } from 'zod';
 import type { Request } from 'express';
 import { TasksService } from '../../tasks/tasks.service';
+import { UsersService } from '../../users/users.service';
 import type { AuthenticatedContext } from '../types';
 import { getUserId } from '../decorator/get-mcp-user';
 import { handleError } from '../decorator/error-handling';
 import { GetTasksSchema, CreateTaskSchema, UpdateTaskSchema, DeleteTaskSchema } from '../schemas/task.schema';
+import { getUtcDateForTimezone } from '../decorator/helpers';
 
 @Injectable()
 export class TasksMcpTools {
-  constructor(private readonly tasksService: TasksService) {}
+  constructor(
+    private readonly tasksService: TasksService,
+    private readonly usersService: UsersService, // Added to pull user configurations dynamically
+  ) {}
 
   @Tool({
     name: 'create_task',
@@ -26,16 +30,22 @@ export class TasksMcpTools {
     try {
       const userId = getUserId({ request, ...context });
 
+      // Fetch the user configuration to ensure accurate local calendar placement
+      const user = await this.usersService.findOne(userId);
+
+      const userTimezone = user.timezone || 'UTC';
+      const parsedScheduleDate = getUtcDateForTimezone(input.scheduled_date, userTimezone, false);
+
       const task = await this.tasksService.createTask(userId, {
         title: input.title,
         description: input.description,
         estimatedMinutes: input.estimated_minutes,
-        scheduleDate: new Date(input.scheduled_date), // FIX: parse string → Date
+        scheduleDate: parsedScheduleDate, // Safe local midnight representation
         basePriority: input.base_priority,
       });
 
       return {
-        content: [{ type: 'text', text: `Successfully created task "${task.title}" scheduled for ${task.scheduledDate}.` }],
+        content: [{ type: 'text', text: `Successfully created task "${task.title}" scheduled for ${task.scheduledDate.toISOString()}.` }],
       };
     } catch (error: any) {
       return handleError(error, 'creating the task');
@@ -56,9 +66,18 @@ export class TasksMcpTools {
     try {
       const userId = getUserId({ request, ...context });
 
+      const user = await this.usersService.findOne(userId);
+
+      const userTimezone = user.timezone || 'UTC';
+      
+      // Calculate start window boundary (00:00:00 local time mapping)
+      const startDate = getUtcDateForTimezone(input.start_date, userTimezone, false);
+      // Calculate end window boundary (23:59:59 local time mapping)
+      const endDate = getUtcDateForTimezone(input.end_date, userTimezone, true);
+
       const tasks = await this.tasksService.getTasks(userId, {
-        startDate: new Date(input.start_date), // FIX: parse string → Date
-        endDate: new Date(input.end_date),     // FIX: parse string → Date
+        startDate,
+        endDate,
         status: input.status,
       });
 
@@ -84,11 +103,19 @@ export class TasksMcpTools {
     try {
       const userId = getUserId({ request, ...context });
 
+      let parsedScheduleDate: Date | undefined = undefined;
+
+      if (input.scheduled_date) {
+        const user = await this.usersService.findOne(userId);
+        
+        parsedScheduleDate = getUtcDateForTimezone(input.scheduled_date, user.timezone || 'UTC', false);
+      }
+
       const task = await this.tasksService.updateTask(input.task_id, {
         title: input.title,
         description: input.description,
         estimatedMinutes: input.estimated_minutes,
-        scheduleDate: input.scheduled_date ? new Date(input.scheduled_date) : undefined, // FIX: parse string → Date
+        scheduleDate: parsedScheduleDate,
         basePriority: input.base_priority,
       });
 
@@ -122,5 +149,4 @@ export class TasksMcpTools {
       return handleError(error, `deleting task ID ${input.task_id}`);
     }
   }
-
 }
