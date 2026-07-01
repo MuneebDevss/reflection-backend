@@ -7,6 +7,7 @@ import { ScheduleMcpTools } from './tools/schedule.mcp-tools';
 import { TasksModule } from '../tasks/tasks.module';
 import { PlansModule } from '../plans/plans.module';
 import { McpBearerGuard } from '../OAuth/guards/mcp-bearer.guard'; // moved — see OAuthModule
+import { UsersModule } from '../users/users.module';
 /**
  * McpModule
  * ─────────
@@ -42,7 +43,7 @@ import { McpBearerGuard } from '../OAuth/guards/mcp-bearer.guard'; // moved — 
     OAuthModule, // exports OAuthService, used by McpBearerGuard
     TasksModule, // exports TasksService, injected into TasksMcpTools
     PlansModule, // exports PlansService, injected into PlansMcpTools
-
+    UsersModule, // exports UsersService, injected into TasksMcpTools and PlansMcpTools
     RekogMcpModule.forRoot({
       name: 'stratostodo-mcp',
       version: '1.0.0',
@@ -63,7 +64,6 @@ import { McpBearerGuard } from '../OAuth/guards/mcp-bearer.guard'; // moved — 
     }),
   ],
   providers: [
-    
     TasksMcpTools,
     PlansMcpTools,
     ScheduleMcpTools,

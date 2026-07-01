@@ -47,7 +47,7 @@ export class TasksController {
    * @returns Array of overdue tasks
    */
   @Get('overdue')
-  async getOverdueTasks(@GetUser('userId') userId: string, @Body('date') date: string) {
+  async getOverdueTasks(@GetUser('userId') userId: string, @Query('date') date: string) {
     return this.tasksService.getOverdueTasks(userId, new Date(date));
   }
 

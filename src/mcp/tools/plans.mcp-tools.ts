@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PlansService } from '../../plans/plans.service';
+import { UsersService } from '../../users/users.service'; // Added to resolve local bulk timestamps
 import { Tool, Context } from '@rekog/mcp-nest';
 import { z } from 'zod';
 import type { Request } from 'express';
@@ -8,14 +9,24 @@ import { getUserId } from '../decorator/get-mcp-user';
 import { TasksService } from '../../tasks/tasks.service';
 import { handleError } from '../decorator/error-handling';
 import { CreateBulkTaskSchema } from '../schemas/task.schema';
-import { AddTaskToPlanSchema, createPlanSchema, DeletePlanSchema, GetPlanByIdSchema, GetTasksForPlanSchema, RemoveTaskFromPlanSchema, updatePlanSchema } from '../schemas/plans.schema';
+import { getUtcDateForTimezone } from '../decorator/helpers';
+import { 
+  AddTaskToPlanSchema, 
+  createPlanSchema, 
+  DeletePlanSchema, 
+  GetPlanByIdSchema, 
+  GetTasksForPlanSchema, 
+  RemoveTaskFromPlanSchema, 
+  updatePlanSchema 
+} from '../schemas/plans.schema';
 
 @Injectable()
 export class PlansMcpTools {
   
   constructor(
     private readonly plansService: PlansService, 
-    private readonly taskService: TasksService
+    private readonly taskService: TasksService,
+    private readonly userService: UsersService, // Injected for timezone mapping lookup
   ) {}
 
   @Tool({
@@ -211,7 +222,7 @@ export class PlansMcpTools {
         .describe('List of tasks to create'),
     }),
     annotations: {
-      title: 'Create and Link Tasks to Plan',
+      title: 'Create Link Tasks to Plan',
       readOnlyHint: false,
       destructiveHint: false,
     },
@@ -219,9 +230,22 @@ export class PlansMcpTools {
   async createAndAddTasksToPlan(input: any, context: AuthenticatedContext, request: Request) {
     try {
       const userId = getUserId({ request, ...context });
-      const count = await this.taskService.bulkCreateTasks(userId, input.tasks);
+      
+      const user = await this.userService.findOne(userId);
+      if (!user) throw new NotFoundException('User profile not found.');
+      const userTimezone = user.timezone || 'UTC';
+
+      // FIX: Maps string arrays and shifts their YYYY-MM-DD format to safe Date objects before database persistence
+      const mappedTasks = input.tasks.map((task: any) => ({
+        ...task,
+        scheduleDate: getUtcDateForTimezone(task.scheduledDate, userTimezone, false),
+      }));
+
+      // FIX: Safely destructure the response object so we log an actual number instead of '[object Object]'
+      const { count } = await this.taskService.bulkCreateTasks(userId, mappedTasks);
+      
       return {
-        content: [{ type: 'text', text: `Successfully created ${count.count} tasks.` }],
+        content: [{ type: 'text', text: `Successfully created ${count} tasks.` }],
       };
     } catch (error: any) {
       return handleError(error, 'creating and adding tasks to plan');

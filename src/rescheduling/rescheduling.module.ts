@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ReschedulingService } from './rescheduling.service';
 import { ReschedulingProcessor } from './rescheduling.processor';
-import { ReschedulingController } from './rsecheduling.controller';
+import { ReschedulingController } from './rescheduling.controller';
 import { TaskCronJobService } from './rescheduling.cron';
 import Redis from 'ioredis';
 @Module({

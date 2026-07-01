@@ -90,7 +90,7 @@ describe('TasksController', () => {
       const mockResult: Task[] = [mockTask];
       mockTasksService.getOverdueTasks.mockResolvedValue(mockResult);
 
-      const result = await controller.getOverdueTasks(mockRequest);
+      const result = await controller.getOverdueTasks(mockRequest, '2026-06-15');
 
       expect(service.getOverdueTasks).toHaveBeenCalledWith(mockUserId);
       expect(result).toEqual(mockResult);

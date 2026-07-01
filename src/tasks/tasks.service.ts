@@ -93,6 +93,9 @@ export class TasksService {
    * Retrieves all incomplete tasks for a user where the scheduled date is in the past
    */
   async getOverdueTasks(userId: string, date: Date): Promise<Task[]> {
+    if (isNaN(date.getTime())) {
+      throw new BadRequestException('Invalid date format.');
+    }
     return this.prisma.task.findMany({
       where: {
         userId,

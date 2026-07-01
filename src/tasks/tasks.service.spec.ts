@@ -61,14 +61,14 @@ describe('TasksService', () => {
     it('should call prisma.task.findMany with a lower-than date filter and incomplete status', async () => {
       const userId = 'user-123';
       mockPrismaService.task.findMany.mockResolvedValue([]);
-
-      await service.getOverdueTasks(userId);
+      const date = new Date('2024-01-01T00:00:00Z');
+      await service.getOverdueTasks(userId,date);
 
       expect(prisma.task.findMany).toHaveBeenCalledWith({
         where: {
           userId,
           scheduledDate: {
-            lt: expect.any(Date), // Checks that a date object was constructed and passed
+            lt: date, // Checks that a date object was constructed and passed
           },
           status: TaskStatus.pending, // Checks that the correct status filter is applied
         },
