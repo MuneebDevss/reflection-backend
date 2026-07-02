@@ -11,6 +11,7 @@ import { PushNotificationsModule } from './push-notifications/push-notifications
 import { OAuthModule } from './OAuth/oauth.module';
 import { McpModule } from './mcp/mcp.module';
 import { PlansModule } from './plans/plans.module';
+import { HealthModule } from './health/health.module';
 @Module({
   imports: [
     ScheduleModule.forRoot(), // Enables scheduling globally
@@ -23,6 +24,7 @@ import { PlansModule } from './plans/plans.module';
       },
     }),
     DateTimeModule,
+    HealthModule,
     PrismaModule,
     UsersModule,
     AuthModule,  // Add AuthModule for JWT authentication
