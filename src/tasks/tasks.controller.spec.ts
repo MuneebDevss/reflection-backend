@@ -119,7 +119,7 @@ describe('TasksController', () => {
     it('should return a specific task matching the dynamic path ID parameter', async () => {
       mockTasksService.getTaskById.mockResolvedValue(mockTask);
 
-      const result = await controller.getTaskById('task-uuid-5678');
+      const result = await controller.getTaskById('task-uuid-5678', mockRequest);
 
       expect(service.getTaskById).toHaveBeenCalledWith('task-uuid-5678');
       expect(result).toEqual(mockTask);
@@ -153,7 +153,7 @@ describe('TasksController', () => {
       const updatedMockTask = { ...mockTask, title: 'Updated Title' };
       mockTasksService.updateTask.mockResolvedValue(updatedMockTask);
 
-      const result = await controller.updateTask('task-uuid-5678', dto);
+      const result = await controller.updateTask('task-uuid-5678', dto, mockRequest);
 
       expect(service.updateTask).toHaveBeenCalledWith('task-uuid-5678', dto);
       expect(result).toEqual(updatedMockTask);
@@ -167,7 +167,7 @@ describe('TasksController', () => {
     it('should execute complete removal workflows based explicitly on task ID', async () => {
       mockTasksService.deleteTask.mockResolvedValue(mockTask);
 
-      const result = await controller.deleteTask('task-uuid-5678');
+      const result = await controller.deleteTask('task-uuid-5678',mockRequest);
 
       expect(service.deleteTask).toHaveBeenCalledWith('task-uuid-5678');
       expect(result).toEqual(mockTask);
