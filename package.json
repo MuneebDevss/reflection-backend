@@ -1,8 +1,19 @@
 {
-  "name": "backend",
+  "name": "reflection-backend",
   "version": "1.0.0",
-  "description": "Reflection backend API with NestJS and Prisma",
+  "description": "Reflection backend API and MCP connector, built with NestJS and Prisma",
   "main": "dist/main.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "REPLACE_WITH_YOUR_REPO_URL"
+  },
+  "homepage": "REPLACE_WITH_YOUR_DOCS_OR_PRIVACY_POLICY_URL",
+  "bugs": {
+    "url": "REPLACE_WITH_YOUR_ISSUES_OR_SUPPORT_URL"
+  },
   "scripts": {
     "build": "prisma generate && npx nest build",
     "start": "node dist/src/main.js",
@@ -16,8 +27,14 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude-connector",
+    "nestjs",
+    "prisma"
+  ],
+  "author": "Muneeb-Ur-Rehman",
   "license": "ISC",
   "dependencies": {
     "@google/generative-ai": "^0.21.0",

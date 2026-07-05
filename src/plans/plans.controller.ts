@@ -39,8 +39,8 @@ export class PlansController {
      * @returns 
      */
     @Patch(':id')
-    async updatePlan(@Param('id') id: string, updatePlanDto: UpdatePlanDto) {
-        return this.plansService.updatePlan(id, updatePlanDto);
+    async updatePlan(@Param('id') id: string, updatePlanDto: UpdatePlanDto, @GetUser('userId') userId: string) {
+        return this.plansService.updatePlan(id, userId, updatePlanDto);
     }
 
     /**
@@ -49,8 +49,8 @@ export class PlansController {
      * @returns 
      */
     @Delete(':id')
-    async deletePlan(@Param('id') id: string) {
-        return this.plansService.deletePlan(id);
+    async deletePlan(@Param('id') id: string, @GetUser('userId') userId: string) {
+        return this.plansService.deletePlan(id, userId);
     }
 
     /**
@@ -70,8 +70,8 @@ export class PlansController {
      * @returns 
      */
     @Post(':id/tasks/:taskId')
-    async addTaskToPlan(@Param('id') planId: string, @Param('taskId') taskId: string) {
-        return this.plansService.addTaskToPlan(planId, taskId);
+    async addTaskToPlan(@Param('id') planId: string, @GetUser('userId') userId: string, @Param('taskId') taskId: string) {
+        return this.plansService.addTaskToPlan(planId, userId, taskId);
     }
 
     /**
@@ -80,8 +80,8 @@ export class PlansController {
      * @returns 
      */
     @Delete('tasks/:taskId')
-    async removeTaskFromPlan(@Param('taskId') taskId: string) {
-        return this.plansService.removeTaskFromPlan(taskId);
+    async removeTaskFromPlan(@GetUser('userId') userId: string, @Param('taskId') taskId: string) {
+        return this.plansService.removeTaskFromPlan(taskId, userId);
     }
     
     /**
@@ -90,7 +90,7 @@ export class PlansController {
      * @returns plan details
      */
     @Get(':id')
-    async getPlanById(@Param('id') id: string) {
-        return this.plansService.getPlanById(id);
+    async getPlanById(@Param('id') id: string, @GetUser('userId') userId: string) {
+        return this.plansService.getPlanById(id, userId);
     }
 }

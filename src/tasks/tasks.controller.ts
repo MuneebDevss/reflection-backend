@@ -86,9 +86,10 @@ export class TasksController {
   @Get(':id')
   async getTaskById(
     @Param('id', ParseUUIDPipe) id: string,
+    @GetUser('userId') userId: string,
   ) {
     // Note: Production environments should ensure this task belongs to userId inside the service
-    return this.tasksService.getTaskById(id);
+    return this.tasksService.getTaskById(id, userId);
   }
 
   /**
@@ -113,8 +114,9 @@ export class TasksController {
   async updateTask(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() data: UpdateTaskDto,
+    @GetUser('userId') userId: string
   ) {
-    return this.tasksService.updateTask(id, data);
+    return this.tasksService.updateTask(id, userId, data);
   }
 
   /**
@@ -126,9 +128,10 @@ export class TasksController {
   @Delete(':id')
   async deleteTask(
     @Param('id', ParseUUIDPipe) id: string,
+    @GetUser('userId') userId: string
   ) {
     // Note: Production environments should ensure this task belongs to req.userId inside the service
-    return this.tasksService.deleteTask(id);
+    return this.tasksService.deleteTask(id, userId);
   }
   
 }

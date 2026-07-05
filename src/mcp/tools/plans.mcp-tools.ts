@@ -63,8 +63,8 @@ export class PlansMcpTools {
   })
   async getPlanById(input: { planId: string }, context: AuthenticatedContext, request: Request) {
     try {
-      getUserId({ request, ...context });
-      const plan = await this.plansService.getPlanById(input.planId);
+      const userId = getUserId({ request, ...context });
+      const plan = await this.plansService.getPlanById(input.planId, userId);
       return {
         content: [{ type: 'text', text: JSON.stringify(plan, null, 2) }],
       };
@@ -111,8 +111,8 @@ export class PlansMcpTools {
   })
   async updatePlan(input: { planId: string; name?: string; description?: string }, context: AuthenticatedContext, request: Request) {
     try {
-      getUserId({ request, ...context });
-      const plan = await this.plansService.updatePlan(input.planId, {
+      const userId = getUserId({ request, ...context });
+      const plan = await this.plansService.updatePlan(input.planId, userId, {
         name: input.name,
         description: input.description,
       });
@@ -136,8 +136,8 @@ export class PlansMcpTools {
   })
   async deletePlan(input: { planId: string }, context: AuthenticatedContext, request: Request) {
     try {
-      getUserId({ request, ...context });
-      await this.plansService.deletePlan(input.planId);
+      const userId = getUserId({ request, ...context });
+      await this.plansService.deletePlan(input.planId, userId);
       return {
         content: [{ type: 'text', text: `Plan ${input.planId} successfully deleted.` }],
       };
@@ -180,8 +180,8 @@ export class PlansMcpTools {
   })
   async addTaskToPlan(input: { planId: string; taskId: string }, context: AuthenticatedContext, request: Request) {
     try {
-      getUserId({ request, ...context });
-      const task = await this.plansService.addTaskToPlan(input.planId, input.taskId);
+      const userId = getUserId({ request, ...context });
+      const task = await this.plansService.addTaskToPlan(input.planId, userId, input.taskId);
       return {
         content: [{ type: 'text', text: JSON.stringify(task, null, 2) }],
       };
@@ -202,8 +202,8 @@ export class PlansMcpTools {
   })
   async removeTaskFromPlan(input: { taskId: string }, context: AuthenticatedContext, request: Request) {
     try {
-      getUserId({ request, ...context });
-      const task = await this.plansService.removeTaskFromPlan(input.taskId);
+      const userId = getUserId({ request, ...context });
+      const task = await this.plansService.removeTaskFromPlan(input.taskId, userId);
       return {
         content: [{ type: 'text', text: JSON.stringify(task, null, 2) }],
       };

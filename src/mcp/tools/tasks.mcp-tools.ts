@@ -34,14 +34,14 @@ export class TasksMcpTools {
       const user = await this.usersService.findOne(userId);
 
       const userTimezone = user.timezone || 'UTC';
-      const parsedScheduleDate = getUtcDateForTimezone(input.scheduled_date, userTimezone, false);
+      const parsedScheduleDate = getUtcDateForTimezone(input.scheduledDate, userTimezone, false);
 
       const task = await this.tasksService.createTask(userId, {
         title: input.title,
         description: input.description,
-        estimatedMinutes: input.estimated_minutes,
+        estimatedMinutes: input.estimatedMinutes ?? 0,
         scheduleDate: parsedScheduleDate, // Safe local midnight representation
-        basePriority: input.base_priority,
+        basePriority: input.basePriority ?? 'medium',
       });
 
       return {
@@ -71,9 +71,9 @@ export class TasksMcpTools {
       const userTimezone = user.timezone || 'UTC';
       
       // Calculate start window boundary (00:00:00 local time mapping)
-      const startDate = getUtcDateForTimezone(input.start_date, userTimezone, false);
+      const startDate = getUtcDateForTimezone(input.startDate, userTimezone, false);
       // Calculate end window boundary (23:59:59 local time mapping)
-      const endDate = getUtcDateForTimezone(input.end_date, userTimezone, true);
+      const endDate = getUtcDateForTimezone(input.endDate, userTimezone, true);
 
       const tasks = await this.tasksService.getTasks(userId, {
         startDate,
@@ -105,25 +105,25 @@ export class TasksMcpTools {
 
       let parsedScheduleDate: Date | undefined = undefined;
 
-      if (input.scheduled_date) {
+      if (input.scheduledDate) {
         const user = await this.usersService.findOne(userId);
         
-        parsedScheduleDate = getUtcDateForTimezone(input.scheduled_date, user.timezone || 'UTC', false);
+        parsedScheduleDate = getUtcDateForTimezone(input.scheduledDate, user.timezone || 'UTC', false);
       }
 
-      const task = await this.tasksService.updateTask(input.task_id, {
+      const task = await this.tasksService.updateTask(input.taskId, userId, {
         title: input.title,
         description: input.description,
-        estimatedMinutes: input.estimated_minutes,
+        estimatedMinutes: input.estimatedMinutes ?? 0,
         scheduleDate: parsedScheduleDate,
-        basePriority: input.base_priority,
+        basePriority: input.basePriority ?? 'medium',
       });
 
       return {
         content: [{ type: 'text', text: `Updated task details successfully for "${task.title}".` }],
       };
     } catch (error: any) {
-      return handleError(error, `updating task ID ${input.task_id}`);
+      return handleError(error, `updating task ID ${input.taskId}`);
     }
   }
 
@@ -140,13 +140,13 @@ export class TasksMcpTools {
   async deleteTask(input: any, context: AuthenticatedContext, request: Request) {
     try {
       const userId = getUserId({ request, ...context });
-      await this.tasksService.deleteTask(input.task_id);
+      await this.tasksService.deleteTask(input.taskId, userId);
 
       return {
-        content: [{ type: 'text', text: `Task ID ${input.task_id} has been permanently erased.` }],
+        content: [{ type: 'text', text: `Task ID ${input.taskId} has been permanently erased.` }],
       };
     } catch (error: any) {
-      return handleError(error, `deleting task ID ${input.task_id}`);
+      return handleError(error, `deleting task ID ${input.taskId}`);
     }
   }
 }

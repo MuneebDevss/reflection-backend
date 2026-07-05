@@ -35,8 +35,8 @@ export class ScheduleMcpTools {
       const user = await this.userService.findOne(userId);
       if (!user) throw new NotFoundException('User profile not found.');
 
-      const parsedScheduleStartDate = getUtcDateForTimezone(input.start_date, user.timezone || 'UTC', false);
-      const parsedScheduleEndDate = getUtcDateForTimezone(input.end_date, user.timezone || 'UTC', true);
+      const parsedScheduleStartDate = getUtcDateForTimezone(input.startDate, user.timezone || 'UTC', false);
+      const parsedScheduleEndDate = getUtcDateForTimezone(input.endDate, user.timezone || 'UTC', true);
       
       const summary = await this.tasksService.getCapacitySummary(userId, {
         startDate: parsedScheduleStartDate,
@@ -68,11 +68,11 @@ export class ScheduleMcpTools {
       const user = await this.userService.findOne(userId);
       if (!user) throw new NotFoundException('User profile not found.');
 
-      const parsedScheduleStartDate = getUtcDateForTimezone(input.start_date, user.timezone || 'UTC', false);
-      const parsedScheduleEndDate = getUtcDateForTimezone(input.end_date, user.timezone || 'UTC', true);
+      const parsedScheduleStartDate = getUtcDateForTimezone(input.startDate, user.timezone || 'UTC', false);
+      const parsedScheduleEndDate = getUtcDateForTimezone(input.endDate, user.timezone || 'UTC', true);
       
       // FIX: Changed endOfDay to false so shifted tasks land perfectly at 00:00:00 local time
-      const parsedShiftToDate = getUtcDateForTimezone(input.shift_to_date, user.timezone || 'UTC', false);
+      const parsedShiftToDate = getUtcDateForTimezone(input.shiftToDate, user.timezone || 'UTC', false);
       
       const tasksTransaction = await this.tasksService.bulkShiftTasks(userId, {
         startDate: parsedScheduleStartDate,

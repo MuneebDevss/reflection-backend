@@ -13,9 +13,9 @@ export class PlansService {
      * @param planId 
      * @returns 
      */
-    async getPlanById(planId: string) {
+    async getPlanById(planId: string, userId: string) {
         return this.prisma.planGroup.findUnique({
-            where: { id: planId },
+            where: { id: planId, userId },
         });
     }
 
@@ -53,9 +53,9 @@ export class PlansService {
      * @param planData 
      * @returns 
      */
-    async updatePlan(planId: string, planData: UpdatePlanDto) {
+    async updatePlan(planId: string, userId: string, planData: UpdatePlanDto) {
         return this.prisma.planGroup.update({
-            where: { id: planId },
+            where: { id: planId, userId },
             data: {
                 title: planData.name,
                 goalDescription: planData.description,
@@ -68,9 +68,9 @@ export class PlansService {
      * @param planId 
      * @returns 
      */
-    async deletePlan(planId: string) {
+    async deletePlan(planId: string, userId: string) {
         await  this.prisma.planGroup.delete({
-            where: { id: planId },
+            where: { id: planId, userId },
         });
         return this.prisma.task.updateMany({
             where: { planId },
@@ -93,9 +93,9 @@ export class PlansService {
      * @param taskId 
      * @returns 
      */
-    async addTaskToPlan(planId: string, taskId: string) {
+    async addTaskToPlan(planId: string, userId: string, taskId: string) {
         return this.prisma.task.update({
-            where: { id: taskId },
+            where: { id: taskId, userId },
             data: { planId },
         });
     }
@@ -105,9 +105,9 @@ export class PlansService {
      * @param taskId 
      * @returns 
      */
-    async removeTaskFromPlan(taskId: string) {
+    async removeTaskFromPlan(taskId: string, userId: string) {
         return this.prisma.task.update({
-            where: { id: taskId },
+            where: { id: taskId, userId },
             data: { planId: null },
         });
     }

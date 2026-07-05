@@ -57,9 +57,9 @@ export class TasksService {
   /**
    * Updates an existing task's details
    */
-  async updateTask(taskId: string, data: UpdateTaskDto): Promise<Task> {
+  async updateTask(taskId: string, userId: string, data: UpdateTaskDto): Promise<Task> {
     return this.prisma.task.update({
-      where: { id: taskId },
+      where: { id: taskId, userId },
       data: {
         title: data.title,
         description: data.description,
@@ -74,18 +74,18 @@ export class TasksService {
   /**
    * Deletes a specific task by its ID
    */
-  async deleteTask(taskId: string): Promise<Task> {
+  async deleteTask(taskId: string, userId: string): Promise<Task> {
     return this.prisma.task.delete({
-      where: { id: taskId },
+      where: { id: taskId, userId },
     });
   }
 
   /**
    * Retrieves a single task by its unique identifier
    */
-  async getTaskById(taskId: string): Promise<Task | null> {
+  async getTaskById(taskId: string, userId: string): Promise<Task | null> {
     return this.prisma.task.findUnique({
-      where: { id: taskId },
+      where: { id: taskId, userId },
     });
   }
 
