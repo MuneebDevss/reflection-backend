@@ -126,7 +126,7 @@ export class PlansMcpTools {
 
   @Tool({
     name: 'delete_plan',
-    description: "Deletes a plan by its ID and detaches its associated tasks.",
+    description: "Deletes a plan by its ID and deletes its associated tasks.",
     parameters: DeletePlanSchema,
     annotations: {
       title: 'Delete Plan',

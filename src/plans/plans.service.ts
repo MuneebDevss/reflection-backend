@@ -72,9 +72,8 @@ export class PlansService {
         await  this.prisma.planGroup.delete({
             where: { id: planId, userId },
         });
-        return this.prisma.task.updateMany({
+        return this.prisma.task.deleteMany({
             where: { planId },
-            data: { planId: null },
         });
     }
 
