@@ -126,7 +126,6 @@ export class AuthService {
       httpOnly: true,
       secure: true,
       sameSite: 'none' as 'none', // 🔥 Force type-casting to ensure Express reads it perfectly
-      partitioned: true,
       maxAge: 15 * 60 * 1000,
     });
 
@@ -134,7 +133,6 @@ export class AuthService {
       httpOnly: true,
       secure: true,
       sameSite: 'none' as 'none', // 🔥 Force type-casting to ensure Express reads it perfectly
-      partitioned: true,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
   }
