@@ -69,15 +69,12 @@ export class PlansService {
      * @returns 
      */
     async deletePlan(planId: string, userId: string) {
-        await  this.prisma.planGroup.delete({
+        return  this.prisma.planGroup.delete({
             where: { id: planId, userId },
-        });
-        return this.prisma.task.deleteMany({
-            where: { planId },
         });
     }
 
-    /**
+    /**I
      * Retrieves all tasks for a given plan
      * @param planId 
      * @returns 
