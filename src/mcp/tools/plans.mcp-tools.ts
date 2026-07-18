@@ -10,24 +10,24 @@ import { TasksService } from '../../tasks/tasks.service';
 import { handleError } from '../decorator/error-handling';
 import { CreateBulkTaskSchema } from '../schemas/task.schema';
 import { getUtcDateForTimezone } from '../decorator/helpers';
-import { 
-  AddTaskToPlanSchema, 
-  createPlanSchema, 
-  DeletePlanSchema, 
-  GetPlanByIdSchema, 
-  GetTasksForPlanSchema, 
-  RemoveTaskFromPlanSchema, 
-  updatePlanSchema 
+import {
+  AddTaskToPlanSchema,
+  createPlanSchema,
+  DeletePlanSchema,
+  GetPlanByIdSchema,
+  GetTasksForPlanSchema,
+  RemoveTaskFromPlanSchema,
+  updatePlanSchema
 } from '../schemas/plans.schema';
 
 @Injectable()
 export class PlansMcpTools {
-  
+
   constructor(
-    private readonly plansService: PlansService, 
+    private readonly plansService: PlansService,
     private readonly taskService: TasksService,
     private readonly userService: UsersService, // Injected for timezone mapping lookup
-  ) {}
+  ) { }
 
   @Tool({
     name: 'get_plans',
@@ -211,10 +211,15 @@ export class PlansMcpTools {
       return handleError(error, 'removing task from plan');
     }
   }
-  
+
   @Tool({
     name: 'create_and_add_tasks_to_plan',
-    description: 'Creates multiple new tasks and adds them to a specific plan. Returns the updated tasks.',
+    description: `
+    Creates one or more tasks for the authenticated user and adds them to a specific plan. 
+    IMPORTANT: Each task's description MUST be a structured, comprehensive guide 
+    (what it is, why it matters, key points, resource link) — never a one-line summary. 
+    If a request covers multiple distinct topics, create one task per topic rather than grouping them into a single task.
+    `,
     parameters: z.object({
       tasks: z
         .array(CreateBulkTaskSchema)
@@ -230,7 +235,7 @@ export class PlansMcpTools {
   async createAndAddTasksToPlan(input: any, context: AuthenticatedContext, request: Request) {
     try {
       const userId = getUserId({ request, ...context });
-      
+
       const user = await this.userService.findOne(userId);
       if (!user) throw new NotFoundException('User profile not found.');
       const userTimezone = user.timezone || 'UTC';
@@ -243,7 +248,7 @@ export class PlansMcpTools {
 
       // FIX: Safely destructure the response object so we log an actual number instead of '[object Object]'
       const { count } = await this.taskService.bulkCreateTasks(userId, mappedTasks);
-      
+
       return {
         content: [{ type: 'text', text: `Successfully created ${count} tasks.` }],
       };
