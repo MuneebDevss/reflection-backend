@@ -65,6 +65,7 @@ async function bootstrap() {
       exclude: [
         'mcp',
         '.well-known/*path',
+         'oauth/*path'
       ],
     });
     const port = process.env.PORT || 3001;
