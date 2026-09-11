@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { RequestMethod, ValidationPipe } from '@nestjs/common';
 import { AppModule } from '../app.module';
 import { AllExceptionsFilter } from '../common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from '../interceptors/logging.interceptor';
@@ -50,7 +50,7 @@ async function bootstrapServer(): Promise<ExpressHandler> {
   );
 
   app.setGlobalPrefix('api', {
-    exclude: ['mcp', '.well-known/*path', 'oauth/*path'],
+    exclude: ['mcp', '.well-known/*path', 'oauth/*path',{ path: '/', method: RequestMethod.GET },],
   });
 
   await app.init();
