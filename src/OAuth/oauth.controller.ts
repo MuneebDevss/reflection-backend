@@ -23,7 +23,7 @@ export class OAuthController {
   // Claude fetches this FIRST when it gets a 401 from your MCP endpoint.
   // ─────────────────────────────────────────────────────────────────────────
   // What claude.ai fetches at step 2 of the handshake:
-  @Get('.well-known/oauth-protected-resource/mcp')  // /mcp suffix add karo
+  @Get('.well-known/oauth-protected-resource')  // /mcp suffix add karo
   protectedResourceMetadata() {
     const base = process.env.APP_URL
     return {
