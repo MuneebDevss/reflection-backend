@@ -60,7 +60,7 @@ describe('AuthController', () => {
       const mockResponse = createMockResponse();
       mockAuthService.register.mockResolvedValue(expectedResult);
 
-      const result = await controller.register(dto, mockResponse);
+      const result = await controller.register(dto);
 
       expect(authService.register).toHaveBeenCalledWith(dto, mockResponse);
       expect(result).toEqual(expectedResult);
@@ -79,7 +79,7 @@ describe('AuthController', () => {
 
       mockAuthService.generateTokens.mockResolvedValue(expectedTokensResult);
 
-      const result = await controller.login(mockReq, mockRes);
+      const result = await controller.login(mockReq);
 
       // Matches controller implementation precisely: (email, id, res)
       expect(authService.generateTokens).toHaveBeenCalledWith(
@@ -110,7 +110,7 @@ describe('AuthController', () => {
 
       mockAuthService.generateTokens.mockResolvedValue(expectedTokensResult);
       
-      const result = await controller.refresh(mockReq, mockRes);
+      const result = await controller.refresh(mockReq);
 
       // Asserts handling matches updated strategy payload structure: (email, userId, res)
       expect(authService.generateTokens).toHaveBeenCalledWith(
@@ -127,7 +127,7 @@ describe('AuthController', () => {
     it('should call clearCookie for both tokens directly and confirm operation', async () => {
       const mockRes = createMockResponse();
 
-      const result = await controller.logout(mockRes);
+      const result = await controller.logout();
 
       // Assert clear commands match controller definitions exactly
       expect(mockRes.clearCookie).toHaveBeenCalledWith('access_token', expect.objectContaining({
