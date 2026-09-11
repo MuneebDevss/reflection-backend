@@ -1,48 +1,86 @@
 {
-  "name": "backend",
+  "name": "reflection-backend",
   "version": "1.0.0",
-  "description": "Reflection backend API with NestJS and Prisma",
+  "description": "Reflection backend API and MCP connector, built with NestJS and Prisma",
   "main": "dist/main.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "REPLACE_WITH_YOUR_REPO_URL"
+  },
+  "homepage": "REPLACE_WITH_YOUR_DOCS_OR_PRIVACY_POLICY_URL",
+  "bugs": {
+    "url": "REPLACE_WITH_YOUR_ISSUES_OR_SUPPORT_URL"
+  },
   "scripts": {
-    "build": "tsc",
+    "build": "prisma generate && npx nest build",
     "start": "node dist/src/main.js",
-    "dev": "ts-node src/main.ts",
+    "dev": "ts-node -r tsconfig-paths/register src/main.ts",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "prisma:seed": "prisma db seed"
+    "prisma:seed": "prisma db seed",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude-connector",
+    "nestjs",
+    "prisma"
+  ],
+  "author": "Muneeb-Ur-Rehman",
   "license": "ISC",
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@nestjs/bullmq": "^11.0.4",
     "@nestjs/common": "^11.1.12",
     "@nestjs/core": "^11.1.12",
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.1.12",
-    "@prisma/client": "6.19.2",
+    "@nestjs/schedule": "^6.1.3",
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "@rekog/mcp-nest": "^1.9.10",
     "bcrypt": "^6.0.0",
+    "bullmq": "^5.78.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.3",
+    "cookie-parser": "^1.4.7",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
-    "prisma": "6.19.2",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.2"
+    "rxjs": "^7.8.2",
+    "web-push": "^3.6.7",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@nestjs/cli": "^11.0.23",
+    "@nestjs/testing": "^11.1.26",
     "@types/bcrypt": "^6.0.0",
+    "@types/cookie-parser": "^1.4.10",
     "@types/express": "^4.17.25",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20.11.0",
     "@types/passport-jwt": "^4.0.1",
     "@types/passport-local": "^1.0.38",
+    "@types/web-push": "^3.6.4",
+    "dotenv": "^17.4.2",
+    "jest": "^30.4.2",
+    "prisma": "^7.8.0",
+    "ts-jest": "^29.4.11",
     "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^5.3.3"
   },
   "prisma": {

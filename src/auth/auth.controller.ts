@@ -6,12 +6,14 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  Req,
+  Res,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
 import { LocalAuthGuard } from './guards/local-auth.guard';
-
+import { RefreshTokenGuard } from './guards/rt.guard';
+import { Response } from 'express';
 /**
  * AuthController handles authentication endpoints
  * Provides registration and login functionality
@@ -31,25 +33,14 @@ export class AuthController {
    * {
    *   "email": "user@example.com",
    *   "password": "securePassword123",
-   *   "name": "John Doe"
+   *   "timezone": "America/New_York"
    * }
    * 
-   * Example response:
-   * {
-   *   "user": {
-   *     "id": "uuid",
-   *     "email": "user@example.com",
-   *     "name": "John Doe",
-   *     "createdAt": "2026-02-12T...",
-   *     "updatedAt": "2026-02-12T..."
-   *   },
-   *   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-   * }
    */
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  async register(@Body() registerDto: RegisterDto) {
-    return this.authService.register(registerDto);
+  async register(@Body() registerDto: RegisterDto, @Res({ passthrough: true }) res: Response) {
+    return this.authService.register(registerDto, res);
   }
 
   /**
@@ -69,23 +60,63 @@ export class AuthController {
    *   "password": "securePassword123"
    * }
    * 
-   * Example response:
-   * {
-   *   "user": {
-   *     "id": "uuid",
-   *     "email": "user@example.com",
-   *     "name": "John Doe",
-   *     "createdAt": "2026-02-12T...",
-   *     "updatedAt": "2026-02-12T..."
-   *   },
-   *   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-   * }
    */
   @UseGuards(LocalAuthGuard)
   @Post('login')
+  async login(@Req() req, @Res({ passthrough: true }) res: Response) {
+    return  this.authService.generateTokens(req.user.email, req.user.id, res);
+  }
+
+ /**
+   * Refreshes authentication tokens using a valid Refresh Token cookie.
+   * Implements Refresh Token Rotation (RTR) for optimal security.
+   * POST /auth/refresh
+   */
+  @UseGuards(RefreshTokenGuard)
+  @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  async login(@Body() loginDto: LoginDto, @Request() req) {
-    // req.user is populated by LocalStrategy after successful validation
-    return this.authService.login(req.user);
+  async refresh(
+    @Req() req: any, 
+    @Res({ passthrough: true }) res: Response
+  ) {
+    // 1. req.user is safely populated by your updated RefreshTokenStrategy
+    const { userId, email, refreshToken: oldRefreshToken } = req.user;
+
+    // 2. Generate a fresh pair of tokens (RTR - Refresh Token Rotation)
+    // Passing both parameters allows your service to revoke the old token in the DB
+    return this.authService.generateTokens(email, userId, res);
+  }
+  /**
+   * Logout user by clearing authentication cookies
+   * POST /auth/logout
+   * Clears both access_token and refresh_token cookies to effectively log out the user
+   * @returns Success message
+   * Example response:
+   * {
+   *  "success": true,
+   * "message": "Logged out successfully"
+   * }
+   * Note: The client should also clear any stored tokens on their side for complete logout
+   * Example request header:
+   * Authorization: Bearer <access_token>
+   */
+  @UseGuards(RefreshTokenGuard) // Ensure only authenticated users can log out
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  async logout(@Res({ passthrough: true }) res: Response) {
+    // Clear the access_token cookie
+    const isProd = process.env.NODE_ENV === 'production';
+    res.clearCookie('access_token', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none' as 'none', // 🔥 Force type-casting to ensure Express reads it perfectly
+    });
+    // Clear the refresh_token cookie
+    res.clearCookie('refresh_token', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none' as 'none', // 🔥 Force type-casting to ensure Express reads it perfectly
+    });
+    return { success: true, message: 'Logged out successfully' };
   }
 }

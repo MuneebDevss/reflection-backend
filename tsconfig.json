@@ -1,6 +1,10 @@
 {
   "compilerOptions": {
     "module": "commonjs",
+    "paths": {
+      "@common/*": ["./src/common/*"],
+      "@auth/*": ["./src/auth/*"],
+    },    
     "declaration": true,
     "removeComments": true,
     "emitDecoratorMetadata": true,
@@ -8,8 +12,8 @@
     "allowSyntheticDefaultImports": true,
     "target": "ES2021",
     "sourceMap": true,
+    "types": ["node", "jest"],
     "outDir": "./dist",
-    "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
     "strictNullChecks": false,

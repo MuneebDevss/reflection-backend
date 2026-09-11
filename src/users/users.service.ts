@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException, ConflictException, InternalServerErrorException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateUserDto } from './dto/create-user.dto';
+import { RegisterDto } from './dto/register.dto';
 import { Prisma } from '@prisma/client';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -9,12 +10,12 @@ export class UsersService {
 
   constructor(private prisma: PrismaService) {}
 
-  async create(createUserDto: CreateUserDto) {
+  async create(createUserDto: RegisterDto) {
     try {
       return await this.prisma.user.create({
         data: createUserDto,
       });
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Failed to create user: ${error.message}`, error.stack);
       
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -28,18 +29,20 @@ export class UsersService {
     }
   }
 
-  async findAll() {
-    try {
-      return await this.prisma.user.findMany({
-        include: {
-          goals: true,
-        },
-      });
-    } catch (error) {
-      this.logger.error(`Failed to fetch users: ${error.message}`, error.stack);
-      throw new InternalServerErrorException('Failed to fetch users');
+  async getConnectionStatus(userId: string) {
+      const token = await this.prisma.oAuthAccessToken.findFirst({
+        where: { userId, refreshExpiresAt: { gt: new Date() } },
+        orderBy: { createdAt: 'desc' },
+        include: { client: true },
+      })
+      if (!token) return { connected: false, connectedAt: null, expiresAt: null, clientName: null }
+      return {
+        connected: true,
+        connectedAt: token.createdAt.toISOString(),
+        expiresAt: token.refreshExpiresAt.toISOString(),
+        clientName: token.client.clientName,
+      }
     }
-  }
 
   async findOne(id: string) {
     try {
@@ -51,7 +54,7 @@ export class UsersService {
       const user = await this.prisma.user.findUnique({
         where: { id },
         include: {
-          goals: true,
+          tasks: true,
         },
       });
 
@@ -60,7 +63,7 @@ export class UsersService {
       }
 
       return user;
-    } catch (error) {
+    } catch (error: any ) {
       if (error instanceof NotFoundException || error instanceof BadRequestException) {
         throw error;
       }
@@ -81,11 +84,34 @@ export class UsersService {
       });
 
       return user;
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Failed to fetch user by email: ${error.message}`, error.stack);
       throw new InternalServerErrorException('Failed to fetch user');
     }
   }
+
+  /**
+   * Update user information 
+   * @param id 
+   * @param updateUserData 
+   * @returns 
+   */
+
+  async update(id: string, updateUserData: Partial<UpdateUserDto>) {
+      // Validate UUID format
+      if (!this.isValidUUID(id)) {
+        throw new BadRequestException('Invalid user ID format');
+      }
+      return this.prisma.user.update({
+        where: { id },
+        data: {
+          dailyCapacityMinutes: updateUserData.dailyCapacityMinutes,
+          timezone: updateUserData.timezone,
+          theme: updateUserData.theme,
+        },
+      });
+    }
+  
 
   private isValidUUID(id: string): boolean {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

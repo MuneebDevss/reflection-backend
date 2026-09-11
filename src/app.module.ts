@@ -1,27 +1,39 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
-import { GoalsModule } from './goals/goals.module';
-import { AiModule } from './ai/ai.module';
-import { GoalSessionsModule } from './goal-sessions/goal-sessions.module';
-import { GoalQuestionsModule } from './goal-questions/goal-questions.module';
-import { GoalTasksModule } from './goal-tasks/goal-tasks.module';
-import { HealthModule } from './health/health.module';
 import { DateTimeModule } from './common/date-time/date-time.module';
 import { AuthModule } from './auth/auth.module';
-
+import { TasksModule } from './tasks/tasks.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { BullModule } from '@nestjs/bullmq';
+import { ReschedulingModule } from './rescheduling/rescheduling.module';
+import { PushNotificationsModule } from './push-notifications/push-notifications.module';
+import { OAuthModule } from './OAuth/oauth.module';
+import { McpModule } from './mcp/mcp.module';
+import { PlansModule } from './plans/plans.module';
+import { HealthModule } from './health/health.module';
 @Module({
   imports: [
+    ScheduleModule.forRoot(), // Enables scheduling globally
+    BullModule.forRoot({
+      connection: {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: parseInt(process.env.REDIS_PORT, 10) || 6379,
+        username: process.env.REDIS_USERNAME,
+        password: process.env.REDIS_PASSWORD,
+      },
+    }),
     DateTimeModule,
+    HealthModule,
     PrismaModule,
     UsersModule,
     AuthModule,  // Add AuthModule for JWT authentication
-    GoalsModule,
-    AiModule,
-    GoalSessionsModule,
-    GoalQuestionsModule,
-    GoalTasksModule,
-    HealthModule,
+    TasksModule,
+    PlansModule,
+    ReschedulingModule,
+    PushNotificationsModule,
+    OAuthModule, // discovery + authorize + token endpoints
+    McpModule,   // mounts /mcp inside this same app — see mcp.module.ts
   ],
 })
 export class AppModule {}

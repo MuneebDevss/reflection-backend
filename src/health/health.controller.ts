@@ -9,7 +9,7 @@ export class HealthController {
   check() {
     return {
       status: 'ok',
-      timestamp: this.dateTimeService.toISOString(),
+      timestamp: this.dateTimeService.now().toISOString(),
       uptime: process.uptime(),
     };
   }

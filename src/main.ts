@@ -1,15 +1,17 @@
-import { NestFactory } from '@nestjs/core';
+import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger, BadRequestException } from '@nestjs/common';
 import { AppModule } from './app.module';
-import { AllExceptionsFilter } from './filters/all-exceptions.filter';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from './interceptors/logging.interceptor';
 import { DateTimeService } from './common/date-time/date-time.service';
-
+import cookieParser from 'cookie-parser'; // <-- Import this
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   
   try {
     const app = await NestFactory.create(AppModule);
+    
+    app.use(cookieParser());
     
     // Get DateTimeService from dependency injection container
     const dateTimeService = app.get(DateTimeService);
@@ -22,9 +24,24 @@ async function bootstrap() {
     
     // Enable CORS for frontend
     app.enableCors({
-      origin: ['http://localhost:5173', 'http://localhost:8081'],
+  origin: (origin, callback) => {
+    const allowedOrigins = [
+      process.env.FRONTEND_URL,        // your Next.js frontend
+      'https://claude.ai',
+      'https://api.claude.ai',
+    ];
+    
+    // Allow requests with no origin (mobile apps, curl, server-to-server)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+      },
+      methods: ['GET', 'POST', 'DELETE','PATCH', 'OPTIONS'],
+      allowedHeaders: ['Authorization', 'Content-Type', 'mcp-session-id'],
       credentials: true,
-    });
+    });;
     
     // Enable validation globally with detailed error messages
     app.useGlobalPipes(new ValidationPipe({
@@ -34,23 +51,27 @@ async function bootstrap() {
       transformOptions: {
         enableImplicitConversion: true,
       },
-      exceptionFactory: (errors) => {
-        const messages = errors.map(error => ({
-          field: error.property,
-          errors: Object.values(error.constraints || {}),
-        }));
-        return new BadRequestException({
-          statusCode: 400,
-          message: 'Validation failed',
-          errors: messages,
-        });
-      },
     }));
 
+     /**
+     * CRITICAL: if you set a global API prefix (e.g. '/api' for your REST
+     * routes), you MUST exclude the MCP and OAuth discovery paths. Claude
+     * hits these at fixed, well-known paths — '/mcp', '/.well-known/...',
+     * '/oauth/authorize', '/oauth/token' — with no prefix awareness. Forgetting
+     * this exclusion is the single most common reason "OAuth works in curl but
+     * Claude can't connect" — the discovery request just 404s silently.
+     */
+    app.setGlobalPrefix('api', {
+      exclude: [
+        'mcp',
+        '.well-known/*path',
+         'oauth/*path'
+      ],
+    });
     const port = process.env.PORT || 3001;
-    await app.listen(port);
+    await app.listen(port, '0.0.0.0');
     logger.log(`🚀 Server running on http://localhost:${port}`);
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Failed to start the application', error.stack);
     process.exit(1);
   }
