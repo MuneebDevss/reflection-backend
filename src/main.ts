@@ -1,5 +1,5 @@
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
-import { ValidationPipe, Logger, BadRequestException } from '@nestjs/common';
+import { ValidationPipe, Logger, BadRequestException, RequestMethod } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from './interceptors/logging.interceptor';
@@ -65,7 +65,8 @@ async function bootstrap() {
       exclude: [
         'mcp',
         '.well-known/*path',
-         'oauth/*path'
+         'oauth/*path',
+         { path: '/', method: RequestMethod.GET },
       ],
     });
     const port = process.env.PORT || 3001;

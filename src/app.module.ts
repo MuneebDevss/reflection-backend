@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { DiscoveryModule } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
 import { DateTimeModule } from './common/date-time/date-time.module';
@@ -12,8 +13,10 @@ import { OAuthModule } from './OAuth/oauth.module';
 import { McpModule } from './mcp/mcp.module';
 import { PlansModule } from './plans/plans.module';
 import { HealthModule } from './health/health.module';
+import { AppController } from './app.controller';
 @Module({
   imports: [
+    DiscoveryModule,
     ScheduleModule.forRoot(), // Enables scheduling globally
     BullModule.forRoot({
       connection: {
@@ -35,5 +38,6 @@ import { HealthModule } from './health/health.module';
     OAuthModule, // discovery + authorize + token endpoints
     McpModule,   // mounts /mcp inside this same app — see mcp.module.ts
   ],
+  controllers: [AppController],
 })
 export class AppModule {}
