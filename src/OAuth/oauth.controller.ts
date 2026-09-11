@@ -40,19 +40,19 @@ export class OAuthController {
 
   @Get('.well-known/oauth-authorization-server')
   authServerMetadata() {
-    const base = process.env.APP_URL
+    const base = process.env.APP_URL; // e.g. https://reflection-backend-rq55.onrender.com
     return {
       issuer: base,
-      authorization_endpoint: `${base}/oauth/authorize`,
-      token_endpoint: `${base}/oauth/token`,
-      registration_endpoint: `${base}/oauth/register`,       // DCR
+      authorization_endpoint: `${base}/api/oauth/authorize`,
+      token_endpoint: `${base}/api/oauth/token`,
+      registration_endpoint: `${base}/api/oauth/register`,
       scopes_supported: ['tasks:read', 'tasks:write'],
       response_types_supported: ['code'],
       grant_types_supported: ['authorization_code', 'refresh_token'],
       token_endpoint_auth_methods_supported: ['client_secret_post'],
-      code_challenge_methods_supported: ['S256'],             // REQUIRED by Claude
+      code_challenge_methods_supported: ['S256'],
       service_documentation: `${base}/docs`,
-    }
+    };
   }
 
   // ─────────────────────────────────────────────────────────────────────────
