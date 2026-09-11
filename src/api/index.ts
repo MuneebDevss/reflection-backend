@@ -5,12 +5,13 @@ import { AllExceptionsFilter } from '../common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from '../interceptors/logging.interceptor';
 import { DateTimeService } from '../common/date-time/date-time.service';
 import cookieParser from 'cookie-parser';
-import serverlessExpress from '@codegenie/serverless-express';
-import { Callback, Context, Handler } from 'aws-lambda';
+import type { Request, Response } from 'express';
 
-let cachedServer: Handler;
+type ExpressHandler = (request: Request, response: Response) => unknown;
 
-async function bootstrapServer(): Promise<Handler> {
+let cachedServer: ExpressHandler;
+
+async function bootstrapServer(): Promise<ExpressHandler> {
   const app = await NestFactory.create(AppModule);
 
   app.use(cookieParser());
@@ -54,17 +55,15 @@ async function bootstrapServer(): Promise<Handler> {
 
   await app.init();
 
-  const expressApp = app.getHttpAdapter().getInstance();
-  return serverlessExpress({ app: expressApp });
+  return app.getHttpAdapter().getInstance();
 }
 
-export const handler: Handler = async (
-  event: any,
-  context: Context,
-  callback: Callback,
-) => {
+const handler: ExpressHandler = async (request, response) => {
   if (!cachedServer) {
     cachedServer = await bootstrapServer();
   }
-  return cachedServer(event, context, callback);
+  return cachedServer(request, response);
 };
+
+export { handler };
+export default handler;
