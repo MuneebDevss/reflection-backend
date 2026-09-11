@@ -40,12 +40,12 @@ export class OAuthController {
 
   @Get('.well-known/oauth-authorization-server')
   authServerMetadata() {
-    const base = process.env.APP_URL; // e.g. https://reflection-backend-rq55.onrender.com
+    const base = (process.env.APP_URL ?? '').replace(/\/api\/?$/, '');
     return {
       issuer: base,
-      authorization_endpoint: `${base}/api/oauth/authorize`,
-      token_endpoint: `${base}/api/oauth/token`,
-      registration_endpoint: `${base}/api/oauth/register`,
+      authorization_endpoint: `${base}/oauth/authorize`,
+      token_endpoint: `${base}/oauth/token`,
+      registration_endpoint: `${base}/oauth/register`,
       scopes_supported: ['tasks:read', 'tasks:write'],
       response_types_supported: ['code'],
       grant_types_supported: ['authorization_code', 'refresh_token'],

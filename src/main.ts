@@ -64,7 +64,7 @@ async function bootstrap() {
     app.setGlobalPrefix('api', {
       exclude: [
         'mcp',
-        '.well-known/(.*)',
+        '.well-known/*path',
       ],
     });
     const port = process.env.PORT || 3001;
