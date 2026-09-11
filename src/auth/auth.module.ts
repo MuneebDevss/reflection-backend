@@ -49,6 +49,6 @@ import { RefreshTokenStrategy } from './strategies/rt.strategy';
     JwtStrategy,    // Strategy for validating JWT tokens
     RefreshTokenStrategy, // Strategy for validating refresh tokens
   ],
-  exports: [AuthService], // Export AuthService for use in other modules if needed
+  exports: [AuthService,JwtModule], // Export AuthService for use in other modules if needed
 })
 export class AuthModule {}
