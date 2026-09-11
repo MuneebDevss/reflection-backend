@@ -1,4 +1,3 @@
-// src/auth/strategies/rt.strategy.ts
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Request } from 'express';
@@ -11,33 +10,27 @@ export class RefreshTokenStrategy extends PassportStrategy(
 ) {
   constructor() {
     super({
-      // 1. Update the extraction strategy to read from cookies instead of headers
-      jwtFromRequest: ExtractJwt.fromExtractors([
-        (req: Request) => {
-          return req?.cookies?.['refresh_token'] || null;
-        },
-      ]),
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       secretOrKey: process.env.JWT_REFRESH_SECRET || 'rt-secret',
-      passReqToCallback: true, // Retained so we can grab the raw token string below
+      passReqToCallback: true,
     });
   }
 
   /**
-   * Called automatically ONLY after Passport successfully mathematical-validates the JWT.
+   * Called automatically ONLY after Passport successfully validates the JWT signature & expiration.
    */
   async validate(req: Request, payload: { sub: string; email: string }) {
-    // 2. Safely grab the raw token string from the cookies for database lookup matching
-    const refreshToken = req.cookies?.['refresh_token'];
-    
+    const authHeader = req.headers?.authorization;
+    const refreshToken = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+
     if (!refreshToken) {
-      throw new UnauthorizedException('Refresh token missing from cookies');
+      throw new UnauthorizedException('Refresh token missing from Authorization header');
     }
 
-    // Returns payload + raw token to be attached to req.user
     return {
       userId: payload.sub,
       email: payload.email,
-      refreshToken, 
+      refreshToken,
     };
   }
 }

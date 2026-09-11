@@ -1,47 +1,34 @@
-import { AuthService } from '@auth/auth.service';
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
 /**
- * Like JwtAuthGuard but never throws — returns undefined user when unauthenticated.
- * Used by the OAuth authorize endpoint to redirect to login instead of 401.
+ * Like JwtAuthGuard but never throws — sets req.user when a valid Bearer token is present,
+ * or leaves req.user undefined when unauthenticated.
+ * Used by endpoints (like OAuth authorize) that alter behavior based on authentication state.
  */
 @Injectable()
 export class OptionalJwtAuthGuard implements CanActivate {
-  constructor(
-    private jwtService: JwtService,
-    private authService: AuthService,
-  ) {}
+  constructor(private jwtService: JwtService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest();
-    const res = context.switchToHttp().getResponse();
+    const authHeader = req.headers?.authorization;
 
-    const tryVerify = (token: string, secret: string) => {
-      try { return this.jwtService.verify(token, { secret }); }
-      catch { return null; }
-    };
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      try {
+        const payload = this.jwtService.verify(token, {
+          secret: process.env.JWT_ACCESS_SECRET || 'your-secret-key-change-in-production',
+        });
 
-    const accessToken = req.cookies?.access_token;
-    if (accessToken) {
-      const payload = tryVerify(accessToken, process.env.JWT_ACCESS_SECRET!);
-      if (payload) {
-        req.user = { userId: payload.sub, email: payload.email };
-        return true;
+        if (payload?.sub && payload?.email) {
+          req.user = { userId: payload.sub, email: payload.email };
+        }
+      } catch {
+        // Token is invalid/expired; leave req.user undefined
       }
     }
 
-    // access token missing/expired — try silent refresh
-    const refreshToken = req.cookies?.refresh_token;
-    if (refreshToken) {
-      const payload = tryVerify(refreshToken, process.env.JWT_REFRESH_SECRET!);
-      if (payload) {
-        await this.authService.generateTokens(payload.email, payload.sub, res); // reissues both cookies
-        req.user = { userId: payload.sub, email: payload.email };
-        return true;
-      }
-    }
-
-    return true; // guard stays "optional" — controller decides what to do with req.user
+    return true; // Guard stays "optional" — controller logic checks if req.user exists
   }
 }
