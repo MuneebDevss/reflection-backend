@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { DateTimeService } from '../date-time/date-time.service';
-import { Prisma } from '@prisma/client';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -44,7 +44,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     }
     response.status(401).json({ error: 'unauthorized' })
     }
-    else if (exception instanceof Prisma.PrismaClientKnownRequestError){
+    else if (exception instanceof PrismaClientKnownRequestError){
       // Switch through common Prisma Error Codes
     switch (exception.code) {
       case 'P2002': {

@@ -16,6 +16,7 @@
   },
   "scripts": {
     "build": "prisma generate && npx nest build",
+    "vercel-build": "prisma generate && tsc",
     "start": "node dist/src/main.js",
     "dev": "ts-node -r tsconfig-paths/register src/main.ts",
     "prisma:generate": "prisma generate",
@@ -24,6 +25,7 @@
     "prisma:studio": "prisma studio",
     "prisma:seed": "prisma db seed",
     "test": "jest",
+    "postinstall": "prisma generate",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage"
   },
