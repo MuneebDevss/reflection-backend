@@ -1,6 +1,7 @@
 import {
   Controller, Get, Post, Req, Res, Query, Body,
   HttpCode, HttpStatus, BadRequestException, UseGuards,
+  Logger,
 } from '@nestjs/common'
 import { Request, Response } from 'express'
 import { OAuthService } from './oauth.service'
@@ -17,19 +18,21 @@ export class OAuthController {
   constructor(
     private oauth: OAuthService,
   ) {}
-
+  private readonly logger = new Logger(OAuthController.name);
   // ─────────────────────────────────────────────────────────────────────────
   // RFC 9728 — Protected Resource Metadata
   // Claude fetches this FIRST when it gets a 401 from your MCP endpoint.
   // ─────────────────────────────────────────────────────────────────────────
   // What claude.ai fetches at step 2 of the handshake:
-  @Get('.well-known/oauth-protected-resource')  // /mcp suffix add karo
+  @Get('.well-known/oauth-protected-resource/mcp')  // /mcp suffix add karo
   protectedResourceMetadata() {
+    this.logger.debug('Fetching protected resource metadata')
     const base = process.env.APP_URL
     return {
       resource: `${base}/mcp`,
       authorization_servers: [`${base}`],          
       bearer_methods_supported: ['header'],
+      scopes_supported: ['tasks:read', 'tasks:write'],
     }
   }
 
@@ -40,19 +43,20 @@ export class OAuthController {
 
   @Get('.well-known/oauth-authorization-server')
   authServerMetadata() {
-    const base = (process.env.APP_URL ?? '').replace(/\/api\/?$/, '');
+    const base = (process.env.APP_URL ?? '').replace(/\/api\/?$/, '')
     return {
       issuer: base,
       authorization_endpoint: `${base}/oauth/authorize`,
       token_endpoint: `${base}/oauth/token`,
-      registration_endpoint: `${base}/oauth/register`,
+      registration_endpoint: `${base}/oauth/register`, // kept only for legacy DCR clients
+      client_id_metadata_document_supported: true,      // <-- new
       scopes_supported: ['tasks:read', 'tasks:write'],
       response_types_supported: ['code'],
       grant_types_supported: ['authorization_code', 'refresh_token'],
-      token_endpoint_auth_methods_supported: ['client_secret_post'],
+      token_endpoint_auth_methods_supported: ['client_secret_post', 'none'], // CIMD clients are public
       code_challenge_methods_supported: ['S256'],
       service_documentation: `${base}/docs`,
-    };
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -93,8 +97,10 @@ export class OAuthController {
     }
 
     const user = req.user as AuthenticatedUser | undefined
+    this.logger.debug('Checking user authentication')
 
     if (!user) {
+      this.logger.warn('User not authenticated, redirecting to login')
       const returnTo = encodeURIComponent(req.url)
       const frontend = process.env.FRONTEND_URL ?? 'http://localhost:5173'
       return res.redirect(`${frontend}/login?returnTo=${returnTo}`)
