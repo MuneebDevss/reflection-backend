@@ -4,10 +4,9 @@ import { OAuthService } from './oauth.service'
 import { PrismaModule } from '../prisma/prisma.module'
 import { McpBearerGuard } from './guards/mcp-bearer.guard'
 import { AuthModule } from '../auth/auth.module'      // ← add
-import { Logger } from '@nestjs/common'
 @Global()
 @Module({
-  imports: [PrismaModule,AuthModule, Logger],
+  imports: [PrismaModule,AuthModule],
   controllers: [OAuthController],
   exports: [OAuthService, McpBearerGuard],
   providers: [OAuthService, McpBearerGuard],

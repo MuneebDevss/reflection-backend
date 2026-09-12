@@ -33,14 +33,13 @@ export class UsersService {
       const token = await this.prisma.oAuthAccessToken.findFirst({
         where: { userId, refreshExpiresAt: { gt: new Date() } },
         orderBy: { createdAt: 'desc' },
-        include: { client: true },
       })
       if (!token) return { connected: false, connectedAt: null, expiresAt: null, clientName: null }
       return {
         connected: true,
         connectedAt: token.createdAt.toISOString(),
         expiresAt: token.refreshExpiresAt.toISOString(),
-        clientName: token.client.clientName,
+        clientName: token.clientId,
       }
     }
 
