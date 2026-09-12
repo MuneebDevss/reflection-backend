@@ -1,4 +1,4 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
 /**
@@ -9,7 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 @Injectable()
 export class OptionalJwtAuthGuard implements CanActivate {
   constructor(private jwtService: JwtService) {}
-
+  private readonly logger = new Logger(OptionalJwtAuthGuard.name);
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest();
     const authHeader = req.headers?.authorization;
@@ -24,8 +24,13 @@ export class OptionalJwtAuthGuard implements CanActivate {
         if (payload?.sub && payload?.email) {
           req.user = { userId: payload.sub, email: payload.email };
         }
-      } catch {
+      } catch (error : unknown) {
+        if (error instanceof Error) {
+          this.logger.debug(`Invalid JWT token: ${error.message}`);
+        }
+        
         // Token is invalid/expired; leave req.user undefined
+
       }
     }
 

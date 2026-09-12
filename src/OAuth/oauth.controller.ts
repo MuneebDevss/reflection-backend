@@ -7,6 +7,7 @@ import { Request, Response } from 'express'
 import { OAuthService } from './oauth.service'
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard'
 import 'dotenv/config'
+import { JwtAuthGuard } from '@auth/guards/jwt-auth.guard'
 
 interface AuthenticatedUser {
   userId: string
@@ -76,9 +77,9 @@ export class OAuthController {
   // On approval, redirect to Claude's callback with ?code=...
   // ─────────────────────────────────────────────────────────────────────────
 
+  
   @Get('oauth/authorize')
-  @UseGuards(OptionalJwtAuthGuard)
-  async authorize(
+  authorize(
     @Query('client_id') clientId: string,
     @Query('redirect_uri') redirectUri: string,
     @Query('response_type') responseType: string,
@@ -86,9 +87,9 @@ export class OAuthController {
     @Query('state') state: string,
     @Query('code_challenge') codeChallenge: string,
     @Query('code_challenge_method') codeChallengeMethod: string,
-    @Req() req: Request,
     @Res() res: Response,
-  ) {
+  ) 
+  {
     if (responseType !== 'code') {
       throw new BadRequestException('unsupported_response_type')
     }
@@ -96,29 +97,52 @@ export class OAuthController {
       throw new BadRequestException('S256 required')
     }
 
-    const user = req.user as AuthenticatedUser | undefined
-    this.logger.debug('Checking user authentication')
+    // We can't determine auth state here — this is a top-level nav from
+    // Claude, and no cross-site cookie survives it (Firefox partitions
+    // cookies by top-level site regardless of SameSite). Hand off to the
+    // frontend, which owns the JWT in localStorage.
+    const frontend = process.env.FRONTEND_URL ?? 'http://localhost:5173'
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: responseType,
+      code_challenge: codeChallenge,
+      code_challenge_method: codeChallengeMethod,
+    })
+    if (scope) params.set('scope', scope)
+    if (state) params.set('state', state)
 
-    if (!user) {
-      this.logger.warn('User not authenticated, redirecting to login')
-      const returnTo = encodeURIComponent(req.url)
-      const frontend = process.env.FRONTEND_URL ?? 'http://localhost:5173'
-      return res.redirect(`${frontend}/login?returnTo=${returnTo}`)
-    }
+    return res.redirect(`${frontend}/oauth/consent?${params.toString()}`)
+  }
 
-    const scopes = (scope ?? 'tasks:read tasks:write').split(' ')
+  @Post('oauth/authorize/complete')
+  @UseGuards(JwtAuthGuard) // your REAL guard, not Optional — this is an XHR call with a Bearer header
+  async completeAuthorize(
+    @Body() body: {
+      client_id: string
+      redirect_uri: string
+      code_challenge: string
+      scope?: string
+      state?: string
+    },
+    @Req() req: Request,
+  ) {
+    const user = req.user as AuthenticatedUser
+    const scopes = (body.scope ?? 'tasks:read tasks:write').split(' ')
+
     const code = await this.oauth.createAuthCode({
-      clientId,
+      clientId: body.client_id,
       userId: user.userId,
-      redirectUri,
+      redirectUri: body.redirect_uri,
       scopes,
-      codeChallenge,
+      codeChallenge: body.code_challenge,
     })
 
-    const callback = new URL(redirectUri)
+    const callback = new URL(body.redirect_uri)
     callback.searchParams.set('code', code)
-    if (state) callback.searchParams.set('state', state)
-    return res.redirect(callback.toString())
+    if (body.state) callback.searchParams.set('state', body.state)
+
+    return { redirectUrl: callback.toString() }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
