@@ -244,6 +244,7 @@ export class PlansMcpTools {
       const mappedTasks = input.tasks.map((task: any) => ({
         ...task,
         scheduleDate: getUtcDateForTimezone(task.scheduledDate, userTimezone, false),
+        rescheduleStrategy: task.rescheduleStrategy ?? 'NDF',
       }));
 
       // FIX: Safely destructure the response object so we log an actual number instead of '[object Object]'

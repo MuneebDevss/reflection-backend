@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { BasePriority, Prisma, Task, TaskStatus } from '@prisma/client';
+import { BasePriority, Prisma, Task, TaskStatus, RescheduleStrategy } from '@prisma/client';
 import { CreateTaskDto } from './dto/create-tasks.dto';
 import { UpdateTaskDto } from './dto/update-tasks.dto';
 import { GetTasksByDateDto } from './dto/get-tasks-by-date.dto';
@@ -50,6 +50,7 @@ export class TasksService {
         estimatedMinutes: data.estimatedMinutes ?? 0,
         basePriority: data.basePriority ?? BasePriority.medium,
         planId: data.planId,
+        rescheduleStrategy: data.rescheduleStrategy ?? RescheduleStrategy.NDF,
       },
     });
   }
@@ -67,6 +68,7 @@ export class TasksService {
         estimatedMinutes: data.estimatedMinutes,
         basePriority: data.basePriority,
         status: data.status,
+        rescheduleStrategy: data.rescheduleStrategy,
       },
     });
   }
@@ -293,6 +295,7 @@ export class TasksService {
       estimatedMinutes: task.estimatedMinutes ?? 0,
       basePriority: task.basePriority ?? BasePriority.medium,
       planId: task.planId,
+      rescheduleStrategy: task.rescheduleStrategy ?? RescheduleStrategy.NDF,
     }));
     return this.prisma.task.createMany({ data: tasksToCreate });
   }

@@ -42,6 +42,7 @@ export class TasksMcpTools {
         estimatedMinutes: input.estimatedMinutes ?? 0,
         scheduleDate: parsedScheduleDate, // Safe local midnight representation
         basePriority: input.basePriority ?? 'medium',
+        rescheduleStrategy: input.rescheduleStrategy ?? 'NDF',
       });
 
       return {
@@ -117,6 +118,7 @@ export class TasksMcpTools {
         estimatedMinutes: input.estimatedMinutes ?? 0,
         scheduleDate: parsedScheduleDate,
         basePriority: input.basePriority ?? 'medium',
+        rescheduleStrategy: input.rescheduleStrategy,
       });
 
       return {

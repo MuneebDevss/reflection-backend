@@ -9,7 +9,7 @@ import {
     MaxLength,
     IsEnum} from 'class-validator';
 import { Type } from 'class-transformer';
-import { BasePriority } from '@prisma/client';
+import { BasePriority, RescheduleStrategy } from '@prisma/client';
 export class UpdateTaskDto {
     @IsOptional()
     @IsString({message: 'Title must be a string'})
@@ -40,5 +40,9 @@ export class UpdateTaskDto {
     @IsOptional()
     @IsEnum(['pending', 'completed'], {message: 'Status must be either pending or completed'})
     status?: 'pending' | 'completed';
+
+    @IsOptional()
+    @IsEnum(RescheduleStrategy, {message: 'Rescheduling strategy must be NDF or FEF'})
+    rescheduleStrategy?: RescheduleStrategy;
 
 }

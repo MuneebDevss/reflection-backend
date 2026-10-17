@@ -1,6 +1,6 @@
 import { DateTimeService } from '@common/date-time/date-time.service';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Task, Prisma } from '@prisma/client';
+import { Task, Prisma, RescheduleStrategy } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 type PipelineTask = Pick<Task, 'id' | 'scheduledDate' | 'estimatedMinutes' | 'basePriority' | 'bumpCount'>;
@@ -44,7 +44,7 @@ export class ReschedulingService {
     return new Date(Date.UTC(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10), 0, 0, 0, 0));
   }
 
-  async rescheduleTasks(userId: string, date?: Date): Promise<RescheduleResult> {
+  async rescheduleTasks(userId: string, date?: Date, strategy?: RescheduleStrategy): Promise<RescheduleResult> {
     // FIX: Grab both capacity and timezone to lock down the scheduling boundary
     const user = await this.prismaService.user.findUnique({
       where: { id: userId },
@@ -59,14 +59,29 @@ export class ReschedulingService {
     // FIX: Align "today" exactly with the user's real-world midnight clock
     const today = date ? this.dateTimeService.startOfDay(date) : this.getUserLocalToday(userTimezone);
 
+    // NDF is intentionally handled before FEF. A request without an override
+    // applies each task's persisted strategy independently.
+    let ndfResult: RescheduleResult | undefined;
+    if (!strategy || strategy === RescheduleStrategy.NDF) {
+      ndfResult = await this.rescheduleNdfTasks(userId, today);
+      if (strategy === RescheduleStrategy.NDF) return ndfResult;
+    }
+
     // Fetch the raw overdue candidates
     const overdueTasks = await this.prismaService.task.findMany({
-      where: { userId, status: 'pending', scheduledDate: { lt: today } },
+      where: {
+        userId,
+        status: 'pending',
+        scheduledDate: { lt: today },
+        ...(strategy ? { rescheduleStrategy: strategy } : { rescheduleStrategy: RescheduleStrategy.FEF }),
+      },
       select: { id: true, scheduledDate: true, estimatedMinutes: true, basePriority: true, bumpCount: true },
     });
 
     if (overdueTasks.length === 0) {
-      return { success: false, message: 'No overdue tasks to process.' };
+      return ndfResult?.success
+        ? ndfResult
+        : { success: false, message: 'No overdue tasks to process.' };
     }
 
     // FIX: Performance Optimization — Pre-fetch ALL upcoming tasks for the max possible cascade window
@@ -163,7 +178,67 @@ export class ReschedulingService {
     const seatedCount = tasksToUpdate.length - graveyardCount;
     this.logger.log(`[${userId}] Rescheduled: seated=${seatedCount}, graveyarded=${graveyardCount}`);
 
-    return { success: true, seatedCount, graveyardCount };
+    return {
+      success: true,
+      seatedCount: seatedCount + (ndfResult?.success ? ndfResult.seatedCount : 0),
+      graveyardCount,
+    };
+  }
+
+  /**
+   * N-Day Forward: move the complete pending NDF schedule by one offset. The
+   * query is date-based, so gaps and ordering are preserved exactly.
+   */
+  private async rescheduleNdfTasks(userId: string, today: Date): Promise<RescheduleResult> {
+    const oldest = await this.prismaService.task.findFirst({
+      where: {
+        userId,
+        status: 'pending',
+        rescheduleStrategy: RescheduleStrategy.NDF,
+        scheduledDate: { lt: today },
+      },
+      orderBy: { scheduledDate: 'asc' },
+      select: { scheduledDate: true },
+    });
+
+    if (!oldest) return { success: false, message: 'No overdue tasks to process.' };
+
+    const shift = this.dateTimeService.getDaysDifference(
+      this.dateTimeService.startOfDay(oldest.scheduledDate),
+      today,
+    );
+    const tasks = await this.prismaService.task.findMany({
+      where: {
+        userId,
+        status: 'pending',
+        rescheduleStrategy: RescheduleStrategy.NDF,
+        scheduledDate: { gte: oldest.scheduledDate },
+      },
+      select: { id: true, scheduledDate: true },
+      orderBy: { scheduledDate: 'asc' },
+    });
+
+    const updates = tasks.map((task) => {
+      const toDate = this.dateTimeService.addDays(this.dateTimeService.startOfDay(task.scheduledDate), shift);
+      return {
+        where: { id: task.id },
+        data: { scheduledDate: toDate },
+        log: {
+          taskId: task.id,
+          fromDate: this.dateTimeService.startOfDay(task.scheduledDate),
+          toDate,
+          reason: 'auto_overdue' as const,
+        },
+      };
+    });
+
+    await this.prismaService.$transaction(async (tx) => {
+      await Promise.all(updates.map(({ where, data }) => tx.task.update({ where, data })));
+      await tx.rescheduleLog.createMany({ data: updates.map(({ log }) => log) });
+    }, { timeout: 15000 });
+
+    this.logger.log(`[${userId}] NDF shifted ${updates.length} tasks by ${shift} day(s)`);
+    return { success: true, seatedCount: updates.length, graveyardCount: 0 };
   }
 
   // ---------------------------------------------------------------------------

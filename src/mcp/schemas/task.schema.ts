@@ -6,6 +6,7 @@ export const CreateTaskSchema = z.object({
       estimatedMinutes: z.number().int().positive().max(1440).describe('Expected duration to complete the task in minutes'),
       scheduledDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected YYYY-MM-DD').describe('The target date for the task formatted as YYYY-MM-DD'),
       basePriority: z.enum(['low', 'medium', 'high']).describe('The baseline urgency level of the item'),
+      rescheduleStrategy: z.enum(['NDF', 'FEF']).optional().describe('Overdue rescheduling strategy. Defaults to NDF for MCP-created tasks.'),
     });
 
 export const CreateBulkTaskSchema = z.object({
@@ -14,7 +15,8 @@ export const CreateBulkTaskSchema = z.object({
   description: z.string().max(2000).optional().describe('Detailed context or notes for the task'),
   scheduledDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected YYYY-MM-DD').describe('The target date for the task formatted as YYYY-MM-DD'),
   estimatedMinutes: z.number().int().positive().max(1440).describe('Expected duration to complete the task in minutes'),
-  basePriority: z.enum(['low', 'medium', 'high']).describe('The priority level of the task'),
+      basePriority: z.enum(['low', 'medium', 'high']).describe('The priority level of the task'),
+      rescheduleStrategy: z.enum(['NDF', 'FEF']).optional().describe('Overdue rescheduling strategy. Defaults to NDF.'),
 });
 
 export const GetTasksSchema = z.object({
@@ -30,6 +32,7 @@ export const UpdateTaskSchema = z.object({
       estimatedMinutes: z.number().int().positive().optional().describe('Revised execution duration in minutes'),
       scheduledDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('Revised execution date in YYYY-MM-DD'),
       basePriority: z.enum(['low', 'medium', 'high']).optional().describe('Revised urgency priority status'),
+      rescheduleStrategy: z.enum(['NDF', 'FEF']).optional().describe('Revised overdue rescheduling strategy'),
     })
 
 export const DeleteTaskSchema = z.object({

@@ -42,6 +42,11 @@ enum PlanSource {
   manual
 }
 
+enum RescheduleStrategy {
+  NDF
+  FEF
+}
+
 // ─────────────────────────────────────────
 // Models
 // ─────────────────────────────────────────
@@ -78,6 +83,7 @@ model Task {
   compositeScore   Float            @default(0)
   bumpCount        Int              @default(0)
   status           TaskStatus       @default(pending)
+  rescheduleStrategy RescheduleStrategy @default(NDF)
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 

@@ -8,7 +8,7 @@ import {
     Max, 
     MaxLength,
     IsEnum} from 'class-validator';
-import { BasePriority } from '@prisma/client';
+import { BasePriority, RescheduleStrategy } from '@prisma/client';
 import { Type } from 'class-transformer';
 //Max title length is 255 characters, description is 1000 characters
 export class CreateTaskDto {
@@ -41,4 +41,8 @@ export class CreateTaskDto {
     @IsOptional()
     @IsString({message: 'Plan ID must be a string'})
     planId?: string;
+
+    @IsOptional()
+    @IsEnum(RescheduleStrategy, {message: 'Rescheduling strategy must be NDF or FEF'})
+    rescheduleStrategy?: RescheduleStrategy;
 }

@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TasksController } from './tasks.controller';
 import { TasksService } from './tasks.service';
-import { BasePriority, Task, TaskStatus } from '@prisma/client';
+import { BasePriority, RescheduleStrategy, Task, TaskStatus } from '@prisma/client';
 import { CreateTaskDto } from './dto/create-tasks.dto';
 import { UpdateTaskDto } from './dto/update-tasks.dto';
 import { GetTasksByDateDto } from './dto/get-tasks-by-date.dto';
@@ -27,7 +27,8 @@ describe('TasksController', () => {
       updatedAt: new Date(),
       planId: '',
       compositeScore: 0,
-      bumpCount: 0
+      bumpCount: 0,
+      rescheduleStrategy: RescheduleStrategy.FEF,
   };
 
   // Create a robust mock object for TasksService

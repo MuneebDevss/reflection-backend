@@ -11,4 +11,5 @@ export class CreatePlanDto {
   @IsOptional()
   @IsString({message: 'Source must be a string'})
   source?: 'mcp' | 'manual';
+
 }
