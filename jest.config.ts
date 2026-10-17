@@ -11,6 +11,6 @@ export default {
   moduleNameMapper: {
     // <rootDir> maps directly to your 'src' folder
     '^@auth/(.*)$': '<rootDir>/auth/$1',
-    '^@common/(.*)$': '<rootDir>/@common/$1' 
+    '^@common/(.*)$': '<rootDir>/common/$1'
   }
 };

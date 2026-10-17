@@ -242,7 +242,11 @@ export class PlansMcpTools {
 
       // FIX: Maps string arrays and shifts their YYYY-MM-DD format to safe Date objects before database persistence
       const mappedTasks = input.tasks.map((task: any) => ({
-        ...task,
+        planId: task.planId,
+        title: task.title,
+        description: task.description,
+        estimatedMinutes: task.estimatedMinutes,
+        basePriority: task.basePriority,
         scheduleDate: getUtcDateForTimezone(task.scheduledDate, userTimezone, false),
       }));
 

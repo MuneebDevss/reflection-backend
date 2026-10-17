@@ -2,6 +2,7 @@ import { ReschedulingService } from "./rescheduling.service";
 import { Processor, WorkerHost } from "@nestjs/bullmq";
 import { Injectable, Logger } from "@nestjs/common";
 import { Job } from "bullmq";
+import { RescheduleStrategy } from './reschedule-strategy.enum';
 @Injectable()
 @Processor('rescheduling', { concurrency: 5 })
 export class ReschedulingProcessor extends WorkerHost  {
@@ -16,7 +17,7 @@ private readonly logger = new Logger(ReschedulingProcessor.name);
     switch (job.name) {
       case 'reschedule': {
         try {
-          const result = await this.svc.rescheduleTasks(job.data.userId)
+          const result = await this.svc.rescheduleTasks(job.data.userId, undefined, RescheduleStrategy.CDU)
           this.logger.log(`Rescheduling completed for user ${job.data.userId}
               with jobs rescheduled: ${result.success ? result.seatedCount : 'N/A'}, 
               moved to graveyard: ${result.success ? result.graveyardCount : 'N/A'}`);

@@ -27,7 +27,7 @@ describe('TasksController', () => {
       updatedAt: new Date(),
       planId: '',
       compositeScore: 0,
-      bumpCount: 0
+      bumpCount: 0,
   };
 
   // Create a robust mock object for TasksService

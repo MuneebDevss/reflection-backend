@@ -1,9 +1,21 @@
 import { Body, Controller, Headers, Post, UnauthorizedException } from '@nestjs/common';
+import { IsDateString, IsEnum, IsNotEmpty, IsOptional } from 'class-validator';
+import { RescheduleStrategy } from './reschedule-strategy.enum';
 import { ReschedulingService } from './rescheduling.service';
 import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '@auth/decorators';
 import { TaskCronJobService } from './rescheduling.cron';
+
+export class RescheduleRequestDto {
+  @IsNotEmpty()
+  @IsEnum(RescheduleStrategy, { message: 'Strategy must be one of CDU, HPF, or FG' })
+  strategy: RescheduleStrategy;
+
+  @IsOptional()
+  @IsDateString()
+  date?: string;
+}
 
 @Controller('reschedule')
 export class ReschedulingController {
@@ -11,9 +23,15 @@ export class ReschedulingController {
 
   @UseGuards(JwtAuthGuard)
   @Post('run')
-    async runRescheduling(@GetUser('userId') userId: string, @Body('date') date: string) {
-        const currentDate = new Date(date);
-       return this.reschedulingService.rescheduleTasks(userId, currentDate);
+    async runRescheduling(
+      @GetUser('userId') userId: string,
+      @Body() body: RescheduleRequestDto,
+    ) {
+       return this.reschedulingService.rescheduleTasks(
+         userId,
+         body.date ? new Date(body.date) : undefined,
+         body.strategy,
+       );
     }
     /**
      * Converting it to a POST endpoint to run by a outside scheduler
