@@ -172,29 +172,16 @@ export class TasksService {
     );
 
     const userTimezone = user.timezone || 'UTC';
-    const formatter = new Intl.DateTimeFormat('en-CA', {
-      timeZone: userTimezone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
-
-    const date = formatter.format(startDate);
+    // Task dates are persisted as UTC calendar dates (@db.Date). The API receives
+    // the selected calendar date at UTC midnight; do not format that boundary in
+    // the user's timezone or negative offsets will turn Oct 18 into Oct 17.
+    const date = startDate.toISOString().slice(0, 10);
     const now = new Date();
-    const currentDate = formatter.format(now);
+    const currentDate = this.dateTimeService.getCurrentDateInTimezone(userTimezone);
     const isCurrentDay = date === currentDate;
-    const currentTimeParts = new Intl.DateTimeFormat('en-US', {
-      timeZone: userTimezone,
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hourCycle: 'h23',
-    }).formatToParts(now);
-    const timePart = (type: string) => Number(currentTimeParts.find((part) => part.type === type)?.value ?? 0);
-    const minutesUntilMidnight = Math.max(
-      0,
-      Math.ceil(24 * 60 - (timePart('hour') * 60 + timePart('minute') + timePart('second') / 60)),
-    );
+    const minutesUntilMidnight = isCurrentDay
+      ? this.getMinutesUntilLocalMidnight(now, userTimezone)
+      : 0;
     const remainingCapacityMinutes = Math.max(
       0,
       (user.dailyCapacityMinutes ?? 480) - completedMinutes,
@@ -228,7 +215,7 @@ export class TasksService {
       : null;
 
     return {
-      date, // Safely converted to user's localized 'YYYY-MM-DD'
+      date, // UTC calendar date key matching the persisted @db.Date value
       tasks,
       totalScheduledMinutes,
       dailyCapacityMinutes: user.dailyCapacityMinutes ?? 480,
@@ -240,6 +227,41 @@ export class TasksService {
       tasksCompletableToday,
       projectedCompletionAt,
     };
+  }
+
+  /** Returns real elapsed minutes until the next local midnight, including DST changes. */
+  private getMinutesUntilLocalMidnight(now: Date, timezone: string): number {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(now);
+    const value = (type: string) => Number(parts.find((part) => part.type === type)?.value ?? 0);
+    const nextDay = new Date(Date.UTC(value('year'), value('month') - 1, value('day') + 1));
+    const nextDate = nextDay.toISOString().slice(0, 10);
+    const utcCandidate = new Date(`${nextDate}T00:00:00.000Z`);
+    const localParts = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
+      hour12: false,
+    }).formatToParts(utcCandidate);
+    const localValue = (type: string) => Number(localParts.find((part) => part.type === type)?.value ?? 0);
+    const localAsUtc = Date.UTC(
+      localValue('year'),
+      localValue('month') - 1,
+      localValue('day'),
+      localValue('hour') === 24 ? 0 : localValue('hour'),
+      localValue('minute'),
+      localValue('second'),
+    );
+    const nextMidnight = new Date(utcCandidate.getTime() + utcCandidate.getTime() - localAsUtc);
+    return Math.max(0, Math.ceil((nextMidnight.getTime() - now.getTime()) / 60_000));
   }
 
   /**
