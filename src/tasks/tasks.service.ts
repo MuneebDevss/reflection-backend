@@ -127,6 +127,13 @@ export class TasksService {
     tasks: Task[]
     totalScheduledMinutes: number
     dailyCapacityMinutes: number
+    completedMinutes: number
+    pendingMinutes: number
+    minutesLeft: number
+    isCurrentDay: boolean
+    todayAvailableMinutes: number
+    tasksCompletableToday: string[]
+    projectedCompletionAt: string | null
   }> {
     const { startDate, endDate } = dto;
 
@@ -155,6 +162,15 @@ export class TasksService {
       0,
     );
 
+    const completedMinutes = tasks
+      .filter((task) => task.status === TaskStatus.completed)
+      .reduce((sum, task) => sum + (task.estimatedMinutes ?? 0), 0);
+    const pendingTasks = tasks.filter((task) => task.status === TaskStatus.pending);
+    const pendingMinutes = pendingTasks.reduce(
+      (sum, task) => sum + (task.estimatedMinutes ?? 0),
+      0,
+    );
+
     const userTimezone = user.timezone || 'UTC';
     const formatter = new Intl.DateTimeFormat('en-CA', {
       timeZone: userTimezone,
@@ -163,11 +179,66 @@ export class TasksService {
       day: '2-digit',
     });
 
+    const date = formatter.format(startDate);
+    const now = new Date();
+    const currentDate = formatter.format(now);
+    const isCurrentDay = date === currentDate;
+    const currentTimeParts = new Intl.DateTimeFormat('en-US', {
+      timeZone: userTimezone,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(now);
+    const timePart = (type: string) => Number(currentTimeParts.find((part) => part.type === type)?.value ?? 0);
+    const minutesUntilMidnight = Math.max(
+      0,
+      Math.ceil(24 * 60 - (timePart('hour') * 60 + timePart('minute') + timePart('second') / 60)),
+    );
+    const remainingCapacityMinutes = Math.max(
+      0,
+      (user.dailyCapacityMinutes ?? 480) - completedMinutes,
+    );
+    const todayAvailableMinutes = isCurrentDay
+      ? Math.min(minutesUntilMidnight, remainingCapacityMinutes)
+      : 0;
+
+    // Maximizing the number of tasks is achieved by selecting the shortest tasks
+    // first. Priority and creation time make equal-length choices deterministic.
+    const tasksCompletableToday: string[] = [];
+    let availableMinutes = todayAvailableMinutes;
+    if (isCurrentDay) {
+      [...pendingTasks]
+        .sort((a, b) =>
+          (a.estimatedMinutes - b.estimatedMinutes) ||
+          (b.compositeScore - a.compositeScore) ||
+          (a.createdAt.getTime() - b.createdAt.getTime()),
+        )
+        .forEach((task) => {
+          const minutes = task.estimatedMinutes ?? 0;
+          if (minutes <= availableMinutes) {
+            tasksCompletableToday.push(task.id);
+            availableMinutes -= minutes;
+          }
+        });
+    }
+
+    const projectedCompletionAt = isCurrentDay
+      ? new Date(now.getTime() + pendingMinutes * 60_000).toISOString()
+      : null;
+
     return {
-      date: formatter.format(startDate), // Safely converted to user's localized 'YYYY-MM-DD'
+      date, // Safely converted to user's localized 'YYYY-MM-DD'
       tasks,
       totalScheduledMinutes,
       dailyCapacityMinutes: user.dailyCapacityMinutes ?? 480,
+      completedMinutes,
+      pendingMinutes,
+      minutesLeft: pendingMinutes,
+      isCurrentDay,
+      todayAvailableMinutes,
+      tasksCompletableToday,
+      projectedCompletionAt,
     };
   }
 
