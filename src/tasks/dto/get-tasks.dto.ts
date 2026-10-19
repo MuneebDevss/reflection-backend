@@ -1,5 +1,6 @@
 import { IsDate, IsNotEmpty, IsString, IsOptional, IsEnum } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
+import { TaskStatus } from '@prisma/client';
 
 export class GetTasks {
     @IsOptional()
@@ -13,8 +14,8 @@ export class GetTasks {
     endDate?: Date; // Renamed to match your URL parameter (?endDate=...)
 
     @IsOptional()
-    @IsEnum(['pending', 'completed'], {message: 'Status must be either pending or completed'})
-    status?: 'pending' | 'completed';
+    @IsEnum(TaskStatus, {message: 'Status must be a valid task status'})
+    status?: TaskStatus;
 
     @IsOptional() // Makes it optional if it isn't always required
     @IsString({ message: 'PlanId must be a string value' })

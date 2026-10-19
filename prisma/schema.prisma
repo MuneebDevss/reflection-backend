@@ -29,6 +29,7 @@ enum TaskStatus {
   pending
   completed
   graveyard
+  discarded
 }
 
 enum RescheduleReason {
@@ -78,6 +79,7 @@ model Task {
   compositeScore   Float            @default(0)
   bumpCount        Int              @default(0)
   status           TaskStatus       @default(pending)
+  discardReason    String?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 

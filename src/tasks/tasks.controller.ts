@@ -19,6 +19,7 @@ import { CreateTaskDto } from './dto/create-tasks.dto';
 import { GetUser } from '@auth/decorators';
 import { GetTasksByDateDto } from './dto/get-tasks-by-date.dto';
 import { GetTasks } from './dto/get-tasks.dto';
+import { DiscardTasksDto } from './dto/discard-tasks.dto';
 
 /**
  * Interface representing an Express request payload injected with auth data via JwtAuthGuard.
@@ -101,6 +102,14 @@ export class TasksController {
   @Post()
   async createTask(@GetUser('userId') userId: string, @Body() data: CreateTaskDto) {
     return this.tasksService.createTask(userId, data);
+  }
+
+  @Post('discard')
+  async discardTasks(
+    @GetUser('userId') userId: string,
+    @Body() data: DiscardTasksDto,
+  ) {
+    return this.tasksService.discardTasks(userId, data);
   }
 
   /**

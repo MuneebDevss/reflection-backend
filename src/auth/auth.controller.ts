@@ -36,7 +36,6 @@ export class AuthController {
     return this.authService.generateTokens(email, userId);
   }
 
-  @UseGuards(RefreshTokenGuard)
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout() {

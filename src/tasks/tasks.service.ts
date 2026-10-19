@@ -5,6 +5,7 @@ import { CreateTaskDto } from './dto/create-tasks.dto';
 import { UpdateTaskDto } from './dto/update-tasks.dto';
 import { GetTasksByDateDto } from './dto/get-tasks-by-date.dto';
 import { GetTasks } from './dto/get-tasks.dto';
+import { DiscardTasksDto } from './dto/discard-tasks.dto';
 import { DateTimeService } from '@common/date-time/date-time.service';
 
 @Injectable()
@@ -68,6 +69,26 @@ export class TasksService {
         basePriority: data.basePriority,
         status: data.status,
       },
+    });
+  }
+
+  /** Marks one or more owned tasks as discarded without deleting them. */
+  async discardTasks(userId: string, data: DiscardTasksDto): Promise<Task[]> {
+    const taskIds = [...new Set(data.taskIds)];
+    const result = await this.prisma.task.updateMany({
+      where: { id: { in: taskIds }, userId },
+      data: {
+        status: TaskStatus.discarded,
+        discardReason: data.reason?.trim() || null,
+      },
+    });
+
+    if (result.count !== taskIds.length) {
+      throw new NotFoundException('One or more tasks could not be found.');
+    }
+
+    return this.prisma.task.findMany({
+      where: { id: { in: taskIds }, userId },
     });
   }
 

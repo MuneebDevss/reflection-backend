@@ -23,6 +23,7 @@ describe('TasksController', () => {
       estimatedMinutes: 30,
       basePriority: BasePriority.medium,
       status: TaskStatus.pending,
+      discardReason: null,
       createdAt: new Date(),
       updatedAt: new Date(),
       planId: '',

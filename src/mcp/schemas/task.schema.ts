@@ -20,7 +20,7 @@ export const CreateBulkTaskSchema = z.object({
 export const GetTasksSchema = z.object({
       startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe('Start date window in YYYY-MM-DD format'),
       endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe('End date window in YYYY-MM-DD format'),
-      status: z.enum(['pending', 'completed', 'graveyard']).optional().describe('Filter results by specific status states'),
+      status: z.enum(['pending', 'completed', 'graveyard', 'discarded']).optional().describe('Filter results by specific status states'),
     })
 
 export const UpdateTaskSchema = z.object({
